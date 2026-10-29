@@ -274,8 +274,8 @@ $pageTitle = "Bảng điều khiển tổng quan - Hệ thống quản lý thự
                 </div>
               </a>
               <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
-                <!-- TODO [TV2]: Gắn route /login khi TV2 hoàn thiện -->
-                <a href="#!" class="dropdown-item">
+                <!-- Chuyển hướng sang giao diện đăng nhập -->
+                <a href="<?= $baseUrl ?>/login" class="dropdown-item">
                   <i class="ti ti-login me-2"></i> Đăng nhập tài khoản
                 </a>
               </div>

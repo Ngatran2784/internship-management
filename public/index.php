@@ -48,6 +48,17 @@ $router->get('/', function () {
     }
 });
 
+// Route hiển thị giao diện đăng nhập (Tabler Auth Single Page)
+// TODO [TV2]: Trong Sprint 1/2, TV2 sẽ chuyển handler này sang [App\Controllers\AuthController::class, 'showLoginForm']
+$router->get('/login', function () {
+    $viewPath = dirname(__DIR__) . '/app/Views/auth/login.php';
+    if (file_exists($viewPath)) {
+        require $viewPath;
+    } else {
+        echo "Login view không tồn tại: " . htmlspecialchars($viewPath);
+    }
+});
+
 // Route kiểm tra trạng thái hệ thống và PDO (Dành cho kiểm thử nội bộ)
 $router->get('/status', function () {
     $dbConnected = false;
