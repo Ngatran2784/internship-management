@@ -1,0 +1,14 @@
+# Tắt Directory Browsing nhằm bảo mật danh sách tệp tin
+Options -Indexes
+
+# Bật Apache Rewrite Engine
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Nếu file hoặc thư mục tồn tại thực tế trên đĩa thì phục vụ trực tiếp (CSS, JS, Images, ...)
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+
+    # Điều hướng mọi yêu cầu còn lại về index.php
+    RewriteRule ^(.*)$ index.php [QSA,L]
+</IfModule>
