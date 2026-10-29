@@ -63,6 +63,10 @@ class Router
     public function dispatch(): void
     {
         $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+        // Xử lý request HEAD tương tự GET theo chuẩn HTTP RFC
+        if ($method === 'HEAD') {
+            $method = 'GET';
+        }
         $uri    = $this->getCurrentUri();
 
         $handler = $this->routes[$method][$uri] ?? null;
