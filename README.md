@@ -2,7 +2,7 @@
 
 Dự án môn học: **Công nghệ Phần mềm (CNPM)**  
 Mô hình phát triển: **Agile / Scrum - Sprint 1**  
-Nhóm thực hiện: **3 thành viên (Tỷ lệ phân chia: 10 – 8 – 8)**
+Nhóm thực hiện: **3 thành viên 
 
 ---
 
@@ -115,8 +115,8 @@ internship-management/
 
 ## 5. Phân công vai trò thành viên
 
-| Thành viên | Vai trò | Điểm | Trách nhiệm chính trong Sprint 1 |
+| Thành viên | Vai trò | Trách nhiệm chính trong Sprint 1 |
 | :--- | :--- | :---: | :--- |
-| **TV1 (Nhóm trưởng)** | Software Architect | 10 | Thiết lập kiến trúc MVC, Autoloader, Core Router, Database PDO, Controller, thiết kế ERD, viết schema.sql và hệ thống tài liệu. |
-| **TV2** | Backend Developer | 8 | Xây dựng logic xác thực người dùng (`AuthController`), tìm kiếm & phân quyền (`UserController`), hoàn thiện `User` và `Role` Models. |
-| **TV3** | Frontend Developer | 8 | Tải và tích hợp giao diện Tabler Bootstrap 5, hoàn thiện các View layouts (`header`, `sidebar`, `footer`), view đăng nhập và view dashboard. |
+| **TV1 (Nhóm trưởng)** | Software Architect  | Thiết lập kiến trúc MVC, Autoloader, Core Router, Database PDO, Controller, thiết kế ERD, viết schema.sql và hệ thống tài liệu. |
+| **TV2** | Backend Developer  | Xây dựng logic xác thực người dùng (`AuthController`), tìm kiếm & phân quyền (`UserController`), hoàn thiện `User` và `Role` Models. |
+| **TV3** | Frontend Developer | Tải và tích hợp giao diện Tabler Bootstrap 5, hoàn thiện các View layouts (`header`, `sidebar`, `footer`), view đăng nhập và view dashboard. |
