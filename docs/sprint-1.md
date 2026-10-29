@@ -1,7 +1,7 @@
 # KẾ HOẠCH & TIÊU CHÍ NGHIỆM THU SPRINT 1
 
 Dự án: **Website Quản lý và Theo dõi Tiến độ Thực tập & Đồ án Sinh viên**  
-Quy mô nhóm: **3 thành viên** | Phân bổ đánh giá đóng góp: **10 – 8 – 8**
+Quy mô nhóm: **3 thành viên**
 
 ---
 
@@ -11,9 +11,9 @@ Quy mô nhóm: **3 thành viên** | Phân bổ đánh giá đóng góp: **10 –
 
 | Thành viên | Trách nhiệm chính | Quyền sở hữu tệp tin (File Ownership) |
 | :--- | :--- | :--- |
-| **TV1 (Nhóm trưởng)** <br> *(Điểm: 10)* | Software Architect & Core Engine | - `app/Core/*` (`Database.php`, `Router.php`, `Controller.php`)<br>- `public/index.php`, `public/.htaccess`<br>- `config/database.example.php`, `.gitignore`<br>- `database/schema.sql`<br>- `README.md`, `docs/*` |
-| **TV2 (Thành viên 2)** <br> *(Điểm: 8)* | Backend Logic & Auth / Users | - `app/Controllers/AuthController.php`<br>- `app/Controllers/UserController.php`<br>- `app/Models/User.php`<br>- `app/Models/Role.php` |
-| **TV3 (Thành viên 3)** <br> *(Điểm: 8)* | Frontend UI & Tabler Integration | - `public/assets/*` (CSS, JS, Fonts của Tabler)<br>- `app/Views/layouts/header.php`<br>- `app/Views/layouts/sidebar.php`<br>- `app/Views/layouts/footer.php`<br>- `app/Views/auth/login.php`<br>- `app/Views/dashboard/index.php` |
+| **TV1 (Nhóm trưởng)** | Software Architect & Core Engine | - `app/Core/*` (`Database.php`, `Router.php`, `Controller.php`)<br>- `public/index.php`, `public/.htaccess`<br>- `config/database.example.php`, `.gitignore`<br>- `database/schema.sql`<br>- `README.md`, `docs/*` |
+| **TV2 (Thành viên 2)** | Backend Logic & Auth / Users | - `app/Controllers/AuthController.php`<br>- `app/Controllers/UserController.php`<br>- `app/Models/User.php`<br>- `app/Models/Role.php` |
+| **TV3 (Thành viên 3)** | Frontend UI & Tabler Integration | - `public/assets/*` (CSS, JS, Fonts của Tabler)<br>- `app/Views/layouts/header.php`<br>- `app/Views/layouts/sidebar.php`<br>- `app/Views/layouts/footer.php`<br>- `app/Views/auth/login.php`<br>- `app/Views/dashboard/index.php` |
 
 ---
 

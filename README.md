@@ -2,7 +2,7 @@
 
 Dự án môn học: **Công nghệ Phần mềm (CNPM)**  
 Mô hình phát triển: **Agile / Scrum - Sprint 1**  
-Nhóm thực hiện: **3 thành viên 
+Nhóm thực hiện: **3 thành viên**
 
 ---
 
