@@ -10,7 +10,7 @@ $projectRoot = dirname(__DIR__);
 require_once $projectRoot . '/public/index.php'; // Đã bao gồm autoloader
 
 echo "\n======================================================\n";
-echo "   KIỂM THỬ HỆ THỐNG TỰ ĐỘNG - SPRINT 1 (NHÓM TRƯỞNG)\n";
+echo "   KIỂM THỬ HỆ THỐNG TỰ ĐỘNG - SPRINT 1 CORE FRAMEWORK\n";
 echo "======================================================\n\n";
 
 $passCount = 0;
@@ -32,7 +32,7 @@ assertTest("Autoload App\Core\Database tồn tại", class_exists('App\Core\Data
 assertTest("Autoload App\Core\Router tồn tại", class_exists('App\Core\Router'));
 assertTest("Autoload App\Core\Controller tồn tại", class_exists('App\Core\Controller'));
 
-// 2. Kiểm tra Autoload các lớp khung của TV2
+// 2. Kiểm tra Autoload các lớp Controllers và Models
 assertTest("Autoload App\Controllers\AuthController tồn tại", class_exists('App\Controllers\AuthController'));
 assertTest("Autoload App\Controllers\UserController tồn tại", class_exists('App\Controllers\UserController'));
 assertTest("Autoload App\Models\User tồn tại", class_exists('App\Models\User'));
@@ -60,7 +60,7 @@ assertTest("Tệp .gitignore tồn tại", file_exists($projectRoot . '/.gitigno
 $gitignoreContent = file_get_contents($projectRoot . '/.gitignore');
 assertTest("Tệp .gitignore đã loại trừ config/database.php", strpos($gitignoreContent, 'config/database.php') !== false);
 
-// 6. Kiểm tra các tệp khung View của TV3
+// 6. Kiểm tra các tệp giao diện Views
 assertTest("Tệp view layouts/header.php tồn tại", file_exists($projectRoot . '/app/Views/layouts/header.php'));
 assertTest("Tệp view layouts/sidebar.php tồn tại", file_exists($projectRoot . '/app/Views/layouts/sidebar.php'));
 assertTest("Tệp view layouts/footer.php tồn tại", file_exists($projectRoot . '/app/Views/layouts/footer.php'));

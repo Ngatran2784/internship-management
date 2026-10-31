@@ -1,6 +1,6 @@
 <?php
 /**
- * KIỂM THỬ XÁC THỰC & NGƯỜI DÙNG - SPRINT 1 (Trúc)
+ * KIỂM THỬ XÁC THỰC & NGƯỜI DÙNG - SPRINT 1
  * Chạy: C:\xampp\php\php.exe tests/test_auth.php
  *
  * Yêu cầu: MySQL đang chạy, đã import database/schema.sql, đã có config/database.php.
@@ -34,7 +34,7 @@ function t(string $desc, bool $cond): void
     $cond ? $pass++ : $fail++;
 }
 
-echo "\n==== KIỂM THỬ AUTH / USER / ROLE - SPRINT 1 (TRÚC) ====\n\n";
+echo "\n==== KIỂM THỬ AUTH / USER / ROLE - SPRINT 1 ====\n\n";
 
 try {
     $pdo = Database::getConnection();

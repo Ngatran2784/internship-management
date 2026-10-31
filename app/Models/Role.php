@@ -7,8 +7,6 @@ use PDO;
 
 /**
  * Role Model - Thao tác với bảng `roles`
- *
- * PHÂN CÔNG: Thành viên 2 (Trúc) - Sprint 1
  */
 class Role
 {

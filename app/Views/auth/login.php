@@ -3,10 +3,6 @@
  * GIAO DIỆN ĐĂNG NHẬP (AUTH LOGIN)
  * Dự án: Hệ thống quản lý thực tập và đồ án sinh viên
  * Giao diện: Tabler Bootstrap 5 (Single Page Center)
- * 
- * TODO [TV2]:
- * - Khi xử lý AuthController@showLoginForm, truyền biến $error (nếu có) từ flash session vào view này.
- * - Khi người dùng gửi form POST /login, AuthController@login sẽ tiếp nhận username và password để xác thực.
  */
 
 $baseUrl = rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? ''), '/\\');
@@ -81,8 +77,8 @@ $pageTitle = "Đăng nhập - Hệ thống quản lý thực tập và đồ án
             <?php endif; ?>
 
             <!-- Form Đăng nhập -->
-            <!-- TODO [TV2]: Cập nhật action trỏ đến route POST /login của AuthController -->
             <form action="<?= $baseUrl ?>/login" method="POST" autocomplete="off" novalidate>
+              <input type="hidden" name="_csrf" value="<?= htmlspecialchars((string)($csrfToken ?? (\App\Controllers\AuthController::csrfToken() ?? '')), ENT_QUOTES, 'UTF-8') ?>">
               <!-- Ô Tên đăng nhập / Mã định danh -->
               <div class="mb-3">
                 <label class="form-label required" for="username">Tên đăng nhập hoặc Email</label>

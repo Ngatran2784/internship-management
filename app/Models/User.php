@@ -9,7 +9,6 @@ use PDO;
 /**
  * User Model - Thao tác với bảng `users` và liên kết `user_roles`
  *
- * PHÂN CÔNG: Thành viên 2 (Trúc) - Sprint 1
  * Mọi truy vấn đều dùng PDO Prepared Statement.
  * Lưu ý: Database dùng EMULATE_PREPARES = false nên MỖI tên tham số
  * chỉ được xuất hiện 1 lần trong câu SQL (vì vậy dùng :username và :email riêng).

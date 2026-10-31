@@ -6,6 +6,33 @@ $pageHeading = $pageHeading ?? 'Bảng điều khiển tổng quan';
 $pageDescription = $pageDescription ?? 'HỆ THỐNG QUẢN LÝ THỰC TẬP VÀ ĐỒ ÁN SINH VIÊN';
 $activePage = $activePage ?? '';
 $escape = static fn (mixed $value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+
+// Đồng bộ trạng thái đăng nhập từ Session
+if (class_exists(\App\Controllers\AuthController::class)) {
+    \App\Controllers\AuthController::startSession();
+    $isLoggedIn = \App\Controllers\AuthController::check();
+    $csrfToken = \App\Controllers\AuthController::csrfToken();
+} else {
+    if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
+        session_start();
+    }
+    $isLoggedIn = isset($_SESSION['user_id']);
+    $csrfToken = $_SESSION['csrf_token'] ?? '';
+}
+
+$currentFullName = $_SESSION['full_name'] ?? ($_SESSION['username'] ?? 'Người dùng');
+$currentRoles = $_SESSION['roles'] ?? [];
+$roleLabels = [
+    'admin'           => 'Quản trị viên',
+    'training_dept'   => 'Phòng đào tạo',
+    'department_head' => 'Trưởng bộ môn',
+    'lecturer'        => 'Giảng viên',
+    'student'         => 'Sinh viên',
+    'enterprise'      => 'Doanh nghiệp',
+];
+$displayRole = !empty($currentRoles) ? ($roleLabels[$currentRoles[0]] ?? $currentRoles[0]) : 'Thành viên';
+$isAdmin = in_array('admin', $currentRoles, true);
+$isStudent = in_array('student', $currentRoles, true);
 ?>
 <!doctype html>
 <html lang="vi">
@@ -26,8 +53,11 @@ $escape = static fn (mixed $value): string => htmlspecialchars((string) $value, 
         .app-brand-title { font-size: 1.05rem; font-weight: 700; line-height: 1.3; letter-spacing: -.01em; }
         .app-topbar { min-height: 2.875rem; padding-top: 0; padding-bottom: 0; }
         .app-topbar .navbar-nav { min-height: 2.875rem; }
-        .app-sidebar .nav-link-title { font-size: .9rem; font-weight: 500; }
-        .app-sidebar .nav-link.disabled { color: rgba(255, 255, 255, .72); opacity: 1; }
+        .app-sidebar { overflow-x: hidden !important; }
+        .app-sidebar .navbar-nav { overflow-x: hidden; }
+        .app-sidebar .nav-link { white-space: nowrap; padding: 0.5rem 0.875rem; text-overflow: ellipsis; overflow: hidden; }
+        .app-sidebar .nav-link-title { font-size: .875rem; font-weight: 500; line-height: 1.35; white-space: nowrap; }
+        .app-sidebar .nav-link.disabled { color: rgba(255, 255, 255, .72); opacity: 1; cursor: not-allowed; }
         .app-search { width: min(20rem, 100%); }
         .dashboard-stat-body { padding-top: .7rem !important; padding-bottom: .7rem !important; }
         .app-search .form-control { height: 2rem; }
@@ -42,20 +72,15 @@ $escape = static fn (mixed $value): string => htmlspecialchars((string) $value, 
             color: #64748b;
         }
         @media (min-width: 992px) {
-            .navbar-vertical.navbar-expand-lg.app-sidebar { width: 15rem; }
-            .navbar-vertical.navbar-expand-lg.app-sidebar ~ .app-page-wrapper { margin-left: 15rem; }
+            .navbar-vertical.navbar-expand-lg.app-sidebar { width: 16rem; }
+            .navbar-vertical.navbar-expand-lg.app-sidebar ~ .app-page-wrapper { margin-left: 16rem; }
         }
         @media (min-width: 1200px) {
             .app-page-wrapper > .page-header { margin-top: 1.5rem; }
         }
         @media (min-width: 1400px) {
-            .navbar-vertical.navbar-expand-lg.app-sidebar { width: 14.375rem; }
-            .navbar-vertical.navbar-expand-lg.app-sidebar ~ .app-page-wrapper { margin-left: 14.375rem; }
-            .app-page-wrapper .container-xl {
-                max-width: 1090px;
-                margin-left: calc(50% - 561px);
-                margin-right: 0;
-            }
+            .navbar-vertical.navbar-expand-lg.app-sidebar { width: 16rem; }
+            .navbar-vertical.navbar-expand-lg.app-sidebar ~ .app-page-wrapper { margin-left: 16rem; }
         }
     </style>
 </head>
@@ -92,8 +117,35 @@ $escape = static fn (mixed $value): string => htmlspecialchars((string) $value, 
                     </div>
 
                     <div class="nav-item dropdown">
+                    <?php if ($isLoggedIn): ?>
                         <a href="#" class="nav-link d-flex lh-1 text-reset p-0" data-bs-toggle="dropdown" aria-label="Tài khoản">
                             <span class="avatar avatar-sm bg-primary-lt">
+                                <i class="ti ti-user fs-2"></i>
+                            </span>
+                            <span class="d-none d-sm-block ps-2 text-start">
+                                <span class="fw-medium d-block"><?= $escape($currentFullName) ?></span>
+                                <span class="small text-secondary"><?= $escape($displayRole) ?></span>
+                            </span>
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
+                            <div class="dropdown-header">
+                                <span class="d-block fw-bold text-dark"><?= $escape($currentFullName) ?></span>
+                                <span class="small text-secondary"><?= $escape($displayRole) ?></span>
+                            </div>
+                            <a href="<?= $escape($baseUrl) ?>/dashboard" class="dropdown-item">
+                                <i class="ti ti-dashboard me-2"></i>Bảng điều khiển tổng quan
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <form action="<?= $escape($baseUrl) ?>/logout" method="POST" class="m-0 p-0">
+                                <input type="hidden" name="_csrf" value="<?= $escape($csrfToken) ?>">
+                                <button type="submit" class="dropdown-item text-danger border-0 bg-transparent w-100 text-start">
+                                    <i class="ti ti-logout me-2"></i>Đăng xuất
+                                </button>
+                            </form>
+                        </div>
+                    <?php else: ?>
+                        <a href="#" class="nav-link d-flex lh-1 text-reset p-0" data-bs-toggle="dropdown" aria-label="Tài khoản">
+                            <span class="avatar avatar-sm bg-secondary-lt">
                                 <i class="ti ti-user fs-2"></i>
                             </span>
                             <span class="d-none d-sm-block ps-2 text-start">
@@ -106,6 +158,7 @@ $escape = static fn (mixed $value): string => htmlspecialchars((string) $value, 
                                 <i class="ti ti-login me-2"></i>Đăng nhập tài khoản
                             </a>
                         </div>
+                    <?php endif; ?>
                     </div>
                 </div>
             </div>

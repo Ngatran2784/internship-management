@@ -2,7 +2,7 @@
 /**
  * FRONT CONTROLLER - ENTRY POINT DUY NHẤT CỦA HỆ THỐNG
  * Dự án: Website Quản lý & Theo dõi Tiến độ Thực tập và Đồ án Sinh viên
- * Sprint 1 - Core Framework Setup (Nhóm trưởng - TV1)
+ * Sprint 1 - Core Framework Setup
  */
 
 declare(strict_types=1);
@@ -38,23 +38,24 @@ use App\Controllers\UserController;
 // 2. KHỞI TẠO ROUTER
 $router = new Router();
 
-// 3. ĐĂNG KÝ ROUTE GET / HIỂN THỊ GIAO DIỆN TABLER DASHBOARD MẪU
+// 3. ĐĂNG KÝ ROUTE
+// Route / : Bảo vệ đăng nhập - chuyển hướng sang /dashboard nếu đã đăng nhập, ngược lại sang /login
 $router->get('/', function () {
-    // Gọi View Dashboard mẫu từ template Tabler chính thức
-    // Dữ liệu được nạp vào View, TV3 sẽ tiếp tục tách layout và TV2 xử lý auth
-    $viewPath = dirname(__DIR__) . '/app/Views/dashboard/index.php';
-    if (file_exists($viewPath)) {
-        require $viewPath;
+    AuthController::startSession();
+    if (AuthController::check()) {
+        AuthController::go('/dashboard');
     } else {
-        echo "Dashboard view không tồn tại: " . htmlspecialchars($viewPath);
+        AuthController::go('/login');
     }
 });
 
-// --- Xác thực (TV2 - Trúc) ---
+// --- Xác thực & Quản lý phiên làm việc ---
 $router->get('/login',   [AuthController::class, 'showLoginForm']);
 $router->post('/login',  [AuthController::class, 'login']);
 $router->post('/logout', [AuthController::class, 'logout']);
-$router->get('/logout',  [AuthController::class, 'logout']);
+$router->get('/logout', function () {
+    AuthController::go('/dashboard');
+});
 
 // Sau khi đăng nhập chuyển về /dashboard (bắt buộc đã đăng nhập)
 $router->get('/dashboard', function () {
@@ -62,7 +63,7 @@ $router->get('/dashboard', function () {
     require dirname(__DIR__) . '/app/Views/dashboard/index.php';
 });
 
-// --- Người dùng (TV2 - Trúc) ---
+// --- Quản lý Người dùng & Hồ sơ cá nhân ---
 $router->get('/users',        [UserController::class, 'index']);
 $router->post('/users/roles', [UserController::class, 'assignRoles']);
 $router->get('/profile',      [UserController::class, 'profile']);
@@ -90,5 +91,7 @@ $router->get('/status', function () {
     echo "</ul>";
 });
 
-// 4. ĐIỀU HƯỚNG REQUEST
-$router->dispatch();
+// 4. ĐIỀU HƯỚNG REQUEST (chỉ tự động dispatch khi truy cập qua Web hoặc chạy trực tiếp file index.php)
+if (php_sapi_name() !== 'cli' || realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === realpath(__FILE__)) {
+    $router->dispatch();
+}

@@ -8,8 +8,6 @@ use App\Models\User;
 /**
  * AuthController - Xác thực người dùng (Login, Logout, Session, CSRF, kiểm tra quyền)
  *
- * PHÂN CÔNG: Thành viên 2 (Trúc) - Sprint 1
- *
  * Các hàm static (startSession, check, hasRole, requireLogin, requireRole, csrfToken,
  * verifyCsrf...) được UserController và route /dashboard dùng lại.
  */
@@ -240,8 +238,7 @@ class AuthController extends Controller
     /**
      * Kiểm tra CSRF cho request POST.
      * - Nếu form gửi kèm trường ẩn `_csrf`: so khớp token trong session.
-     * - TẠM THỜI (khi View login chưa có trường `_csrf`): chấp nhận nếu Origin/Referer cùng host.
-     *   Khi Quỳnh thêm trường `_csrf` vào form thì nhánh này không còn được dùng cho form đó.
+     * - Chấp nhận nếu Origin/Referer cùng host khi kiểm thử.
      */
     public static function verifyCsrf(): bool
     {

@@ -8,8 +8,6 @@ use App\Models\User;
 
 /**
  * UserController - Danh sách người dùng, hồ sơ cá nhân, gán vai trò (phạm vi Sprint 1)
- *
- * PHÂN CÔNG: Thành viên 2 (Trúc) - Sprint 1
  */
 class UserController extends Controller
 {
