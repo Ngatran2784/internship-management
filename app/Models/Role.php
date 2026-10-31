@@ -7,33 +7,32 @@ use PDO;
 
 /**
  * Role Model - Thao tác với bảng `roles`
- * 
- * PHÂN CÔNG: Thành viên 2 (Backend & Database)
- * SPRINT: Sprint 1
+ *
+ * PHÂN CÔNG: Thành viên 2 (Trúc) - Sprint 1
  */
 class Role
 {
     /**
-     * Lấy toàn bộ danh sách vai trò hệ thống
-     * 
-     * TODO [TV2 - Task #111]:
-     * - Viết câu lệnh SELECT * FROM `roles` ORDER BY id ASC.
+     * Lấy toàn bộ danh sách vai trò hệ thống (sắp theo id tăng dần)
      */
     public static function all(): array
     {
-        // TODO: Triển khai truy vấn lấy danh sách vai trò
-        return [];
+        $pdo = Database::getConnection();
+        $stmt = $pdo->query('SELECT * FROM `roles` ORDER BY `id` ASC');
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /**
-     * Tìm vai trò theo ID hoặc Tên
-     * 
-     * TODO [TV2 - Task #112]:
-     * - SELECT * FROM `roles` WHERE name = :name.
+     * Tìm vai trò theo tên định danh (ví dụ: 'admin', 'student')
      */
     public static function findByName(string $name): ?array
     {
-        // TODO: Triển khai truy vấn tìm vai trò theo định danh
-        return null;
+        $pdo = Database::getConnection();
+        $stmt = $pdo->prepare('SELECT * FROM `roles` WHERE `name` = :name LIMIT 1');
+        $stmt->execute(['name' => $name]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $row === false ? null : $row;
     }
 }
