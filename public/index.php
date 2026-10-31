@@ -32,6 +32,8 @@ spl_autoload_register(function (string $class) {
 
 use App\Core\Router;
 use App\Core\Database;
+use App\Controllers\AuthController;
+use App\Controllers\UserController;
 
 // 2. KHỞI TẠO ROUTER
 $router = new Router();
@@ -48,16 +50,23 @@ $router->get('/', function () {
     }
 });
 
-// Route hiển thị giao diện đăng nhập (Tabler Auth Single Page)
-// TODO [TV2]: Trong Sprint 1/2, TV2 sẽ chuyển handler này sang [App\Controllers\AuthController::class, 'showLoginForm']
-$router->get('/login', function () {
-    $viewPath = dirname(__DIR__) . '/app/Views/auth/login.php';
-    if (file_exists($viewPath)) {
-        require $viewPath;
-    } else {
-        echo "Login view không tồn tại: " . htmlspecialchars($viewPath);
-    }
+// --- Xác thực (TV2 - Trúc) ---
+$router->get('/login',   [AuthController::class, 'showLoginForm']);
+$router->post('/login',  [AuthController::class, 'login']);
+$router->post('/logout', [AuthController::class, 'logout']);
+$router->get('/logout',  [AuthController::class, 'logout']);
+
+// Sau khi đăng nhập chuyển về /dashboard (bắt buộc đã đăng nhập)
+$router->get('/dashboard', function () {
+    AuthController::requireLogin();
+    require dirname(__DIR__) . '/app/Views/dashboard/index.php';
 });
+
+// --- Người dùng (TV2 - Trúc) ---
+$router->get('/users',        [UserController::class, 'index']);
+$router->post('/users/roles', [UserController::class, 'assignRoles']);
+$router->get('/profile',      [UserController::class, 'profile']);
+$router->post('/profile',     [UserController::class, 'profile']);
 
 // Route kiểm tra trạng thái hệ thống và PDO (Dành cho kiểm thử nội bộ)
 $router->get('/status', function () {
