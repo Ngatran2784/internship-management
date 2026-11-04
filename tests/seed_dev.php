@@ -23,6 +23,7 @@ spl_autoload_register(function (string $class) use ($root) {
 use App\Core\Database;
 use App\Models\Role;
 use App\Models\User;
+use App\Models\InternshipPeriod;
 
 $pdo = Database::getConnection();
 
@@ -56,6 +57,37 @@ foreach ($accounts as [$username, $email, $password, $fullName, $roleName]) {
     $id = User::create(compact('username', 'email', 'password') + ['full_name' => $fullName]);
     User::assignRoles($id, [(int)Role::findByName($roleName)['id']]);
     echo "+ Tạo tài khoản: {$username} / {$password} ({$roleName})\n";
+}
+
+
+$samplePeriods = [
+    [
+        'code'        => 'HK1-2026-TT',
+        'name'        => 'Đợt Thực tập tốt nghiệp Học kỳ 1 năm học 2026 - 2027',
+        'type'        => InternshipPeriod::TYPE_INTERNSHIP,
+        'start_date'  => '2026-09-01',
+        'end_date'    => '2026-12-31',
+        'status'      => InternshipPeriod::STATUS_ACTIVE,
+        'description' => 'Đợt thực tập doanh nghiệp dành cho sinh viên năm cuối khối ngành Kỹ thuật phần mềm và Công nghệ thông tin.',
+    ],
+    [
+        'code'        => 'HK2-2026-DA',
+        'name'        => 'Đợt Đồ án tốt nghiệp Học kỳ 2 năm học 2026 - 2027',
+        'type'        => InternshipPeriod::TYPE_GRADUATION_PROJECT,
+        'start_date'  => '2027-01-15',
+        'end_date'    => '2027-05-30',
+        'status'      => InternshipPeriod::STATUS_DRAFT,
+        'description' => 'Đợt đăng ký và bảo vệ đồ án tốt nghiệp dành cho sinh viên đủ điều kiện xét tốt nghiệp học kỳ 2.',
+    ],
+];
+
+foreach ($samplePeriods as $pData) {
+    if (InternshipPeriod::findByCode($pData['code']) !== null) {
+        echo "= Đã có đợt: {$pData['code']}\n";
+        continue;
+    }
+    $pId = InternshipPeriod::create($pData);
+    echo "+ Tạo đợt: {$pData['code']} / {$pData['name']} (ID: {$pId})\n";
 }
 
 echo "\nXong. Mở http://localhost/CNPM/internship-management/public/login để đăng nhập thử.\n";

@@ -9,6 +9,9 @@
 -- 3. Script CHƯA được thực thi lên máy chủ MySQL khi chưa có sự phê duyệt của Trưởng nhóm/Người phụ trách.
 -- ==============================================================================
 
+SET NAMES utf8mb4;
+SET CHARACTER SET utf8mb4;
+
 -- 1. BẢNG VAI TRÒ HỆ THỐNG (roles)
 -- Chức năng: Lưu trữ danh mục các vai trò trong hệ thống:
 --   - admin (Quản trị hệ thống)
@@ -55,6 +58,26 @@ CREATE TABLE IF NOT EXISTS `user_roles` (
     CONSTRAINT `fk_user_roles_role` FOREIGN KEY (`role_id`)
         REFERENCES `roles` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Bảng liên kết phân quyền đa vai trò cho người dùng';
+
+-- 4. BẢNG QUẢN LÝ ĐỢT THỰC TẬP VÀ ĐỒ ÁN (internship_periods)
+-- Chức năng: Lưu trữ danh mục các đợt thực tập và đợt đồ án tốt nghiệp
+CREATE TABLE IF NOT EXISTS `internship_periods` (
+    `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY COMMENT 'Khóa chính tự tăng',
+    `code` VARCHAR(50) NOT NULL COMMENT 'Mã đợt định danh duy nhất (vd: HK1-2026-TT, HK2-2026-DA)',
+    `name` VARCHAR(150) NOT NULL COMMENT 'Tên hiển thị của đợt thực tập / đồ án',
+    `type` ENUM('internship', 'graduation_project') NOT NULL COMMENT 'Loại đợt: internship (Thực tập) hoặc graduation_project (Đồ án tốt nghiệp)',
+    `start_date` DATE NOT NULL COMMENT 'Ngày bắt đầu đợt (YYYY-MM-DD)',
+    `end_date` DATE NOT NULL COMMENT 'Ngày kết thúc đợt (YYYY-MM-DD)',
+    `status` ENUM('draft', 'active', 'closed') NOT NULL DEFAULT 'draft' COMMENT 'Trạng thái đợt: draft (Nháp/Chưa mở), active (Đang diễn ra), closed (Đã kết thúc/Đóng)',
+    `description` TEXT NULL COMMENT 'Mô tả chi tiết, quy định hoặc thông báo cho đợt',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Thời điểm tạo bản ghi',
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Thời điểm cập nhật cuối',
+    UNIQUE KEY `uk_internship_periods_code` (`code`),
+    INDEX `idx_internship_periods_status` (`status`),
+    INDEX `idx_internship_periods_type` (`type`),
+    INDEX `idx_internship_periods_dates` (`start_date`, `end_date`),
+    CONSTRAINT `chk_period_dates` CHECK (`end_date` >= `start_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Quản lý danh mục các đợt thực tập và đồ án tốt nghiệp sinh viên';
 
 -- ==============================================================================
 -- ĐỊNH HƯỚNG CÁC PHÂN HỆ TIẾP THEO (DỰ KIẾN TRIỂN KHAI TỪ SPRINT 2+):

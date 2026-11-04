@@ -96,6 +96,11 @@ require dirname(__DIR__) . '/layouts/header.php';
                 <?php endif; ?>
             </p>
             <div class="d-flex flex-wrap justify-content-center gap-2">
+                <?php if ($isAdmin): ?>
+                    <a href="<?= $escape($baseUrl) ?>/periods" class="btn btn-sm btn-primary">
+                        <i class="ti ti-calendar-event me-1"></i>Quản lý đợt thực tập &amp; đồ án
+                    </a>
+                <?php endif; ?>
                 <button type="button" class="btn btn-sm btn-outline-secondary" disabled title="Chức năng đang được phát triển">
                     <i class="ti ti-filter me-1"></i>Bộ lọc nâng cao
                 </button>

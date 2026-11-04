@@ -51,10 +51,10 @@ $isStudent = in_array('student', $currentRoles, true);
                             </span>
                         </li>
                         <li class="nav-item">
-                            <span class="nav-link disabled" aria-disabled="true">
+                            <a class="nav-link<?= $activePage === 'periods' ? ' active' : '' ?>" href="<?= $escape($baseUrl) ?>/periods"<?= $activePage === 'periods' ? ' aria-current="page"' : '' ?>>
                                 <span class="nav-link-icon"><i class="ti ti-calendar-event fs-2"></i></span>
                                 <span class="nav-link-title">Quản lý đợt thực tập và đồ án</span>
-                            </span>
+                            </a>
                         </li>
                         <li class="nav-item">
                             <span class="nav-link disabled" aria-disabled="true">

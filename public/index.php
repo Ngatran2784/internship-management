@@ -1,10 +1,4 @@
 <?php
-/**
- * FRONT CONTROLLER - ENTRY POINT DUY NHẤT CỦA HỆ THỐNG
- * Dự án: Website Quản lý & Theo dõi Tiến độ Thực tập và Đồ án Sinh viên
- * Sprint 1 - Core Framework Setup
- */
-
 declare(strict_types=1);
 
 // Thiết lập múi giờ và hiển thị lỗi môi trường phát triển
@@ -34,6 +28,7 @@ use App\Core\Router;
 use App\Core\Database;
 use App\Controllers\AuthController;
 use App\Controllers\UserController;
+use App\Controllers\InternshipPeriodController;
 
 // 2. KHỞI TẠO ROUTER
 $router = new Router();
@@ -68,6 +63,17 @@ $router->get('/users',        [UserController::class, 'index']);
 $router->post('/users/roles', [UserController::class, 'assignRoles']);
 $router->get('/profile',      [UserController::class, 'profile']);
 $router->post('/profile',     [UserController::class, 'profile']);
+
+// --- Quản lý Đợt thực tập & Đồ án tốt nghiệp ---
+$router->get('/periods',          [InternshipPeriodController::class, 'index']);
+$router->get('/periods/create',   [InternshipPeriodController::class, 'create']);
+$router->post('/periods/create',  [InternshipPeriodController::class, 'store']);
+$router->post('/periods',         [InternshipPeriodController::class, 'store']);
+$router->get('/periods/detail',   [InternshipPeriodController::class, 'show']);
+$router->get('/periods/edit',     [InternshipPeriodController::class, 'edit']);
+$router->post('/periods/update',  [InternshipPeriodController::class, 'update']);
+$router->post('/periods/edit',    [InternshipPeriodController::class, 'update']);
+$router->post('/periods/status',  [InternshipPeriodController::class, 'updateStatus']);
 
 // Route kiểm tra trạng thái hệ thống và PDO (Dành cho kiểm thử nội bộ)
 $router->get('/status', function () {
