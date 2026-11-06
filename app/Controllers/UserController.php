@@ -7,24 +7,156 @@ use App\Models\Role;
 use App\Models\User;
 
 /**
- * UserController - Danh sách người dùng, hồ sơ cá nhân, gán vai trò (phạm vi Sprint 1)
+ * UserController - Quản lý người dùng: danh sách, thêm, sửa, khóa/mở khóa, gán vai trò, hồ sơ cá nhân
+ *
+ * PHÂN CÔNG: Thành viên 2 (Trúc) - Sprint 1, Sprint 2
+ * Chỉ Admin được quản lý tài khoản. Mọi thao tác ghi dữ liệu đều kiểm tra CSRF.
  */
 class UserController extends Controller
 {
     /**
-     * GET /users - Danh sách người dùng kèm vai trò (chỉ admin)
+     * GET /users?role=&keyword= - Danh sách người dùng kèm vai trò, có bộ lọc (chỉ admin)
      */
     public function index(): void
     {
         AuthController::requireRole('admin');
 
+        $role    = self::text($_GET, 'role');
+        $keyword = mb_substr(self::text($_GET, 'keyword'), 0, 100);
+
         $this->respond('users/index', [
-            'users'     => User::all(),
+            'users'     => User::all($role !== '' ? $role : null, $keyword !== '' ? $keyword : null),
             'roles'     => Role::all(),
+            'filters'   => ['role' => $role, 'keyword' => $keyword],
             'success'   => AuthController::pullFlash('success'),
             'error'     => AuthController::pullFlash('error'),
             'csrfToken' => AuthController::csrfToken(),
         ]);
+    }
+
+    /**
+     * GET /users/create - Form thêm tài khoản (chỉ admin)
+     */
+    public function create(): void
+    {
+        AuthController::requireRole('admin');
+
+        $this->renderCreateForm([], []);
+    }
+
+    /**
+     * POST /users hoặc /users/create - Lưu tài khoản mới (chỉ admin)
+     * Tham số: username, email, password, full_name, phone, status (tùy chọn), role_ids[] (tùy chọn)
+     */
+    public function store(): void
+    {
+        AuthController::requireRole('admin');
+        $this->guardPost('/users/create');
+
+        $validRoleIds = array_map(fn($r) => (int)$r['id'], Role::all());
+        $result       = self::validateNewUser($_POST, $validRoleIds);
+
+        if ($result['errors']) {
+            http_response_code(422);
+            $this->renderCreateForm($result['errors'], self::oldInput($_POST));
+            return;
+        }
+
+        $data = $result['data'];
+
+        try {
+            User::createWithRoles($data, $data['role_ids']);
+        } catch (\PDOException $e) {
+            // Hai người cùng tạo một lúc: CSDL chặn trùng bằng ràng buộc UNIQUE
+            if ((string)$e->getCode() === '23000') {
+                http_response_code(422);
+                $this->renderCreateForm(['Tên đăng nhập hoặc email đã tồn tại.'], self::oldInput($_POST));
+                return;
+            }
+            throw $e;
+        }
+
+        AuthController::setFlash('success', 'Đã tạo tài khoản mới.');
+        AuthController::go('/users');
+    }
+
+    /**
+     * GET /users/edit?id=... - Form sửa tài khoản (chỉ admin)
+     */
+    public function edit(): void
+    {
+        AuthController::requireRole('admin');
+
+        $user = $this->findUserFromRequest($_GET['id'] ?? null);
+        $this->renderEditForm($user, [], []);
+    }
+
+    /**
+     * POST /users/update - Lưu thông tin sửa (chỉ admin)
+     * Tham số: id, full_name, email, phone, password (để trống = giữ nguyên), status (tùy chọn)
+     */
+    public function update(): void
+    {
+        AuthController::requireRole('admin');
+        $this->guardPost('/users');
+
+        $user = $this->findUserFromRequest($_POST['id'] ?? null);
+        $id   = (int)$user['id'];
+
+        $result = self::validateUserUpdate($id, $_POST, (int)($_SESSION['user_id'] ?? 0));
+
+        if ($result['errors']) {
+            http_response_code(422);
+            $this->renderEditForm($user, $result['errors'], self::oldInput($_POST));
+            return;
+        }
+
+        try {
+            User::update($id, $result['data']);
+        } catch (\PDOException $e) {
+            if ((string)$e->getCode() === '23000') {
+                http_response_code(422);
+                $this->renderEditForm($user, ['Email đã được sử dụng.'], self::oldInput($_POST));
+                return;
+            }
+            throw $e;
+        }
+
+        // Admin tự sửa họ tên của mình thì cập nhật luôn tên hiển thị trong session
+        if ($id === (int)($_SESSION['user_id'] ?? 0)) {
+            $_SESSION['full_name'] = $result['data']['full_name'];
+        }
+
+        AuthController::setFlash('success', 'Đã cập nhật tài khoản.');
+        AuthController::go('/users');
+    }
+
+    /**
+     * POST /users/status - Khóa / mở khóa tài khoản (chỉ admin)
+     * Tham số: id, status (0 = khóa, 1 = mở khóa)
+     */
+    public function updateStatus(): void
+    {
+        AuthController::requireRole('admin');
+        $this->guardPost('/users');
+
+        $user   = $this->findUserFromRequest($_POST['id'] ?? null);
+        $status = filter_var($_POST['status'] ?? null, FILTER_VALIDATE_INT);
+
+        if ($status !== 0 && $status !== 1) {
+            AuthController::setFlash('error', 'Trạng thái không hợp lệ.');
+            AuthController::go('/users');
+        }
+
+        if (!self::canChangeStatus((int)($_SESSION['user_id'] ?? 0), (int)$user['id'], $status)) {
+            AuthController::setFlash('error', 'Bạn không thể tự khóa tài khoản của chính mình.');
+            AuthController::go('/users');
+        }
+
+        User::updateStatus((int)$user['id'], $status);
+
+        AuthController::setFlash('success', $status === 1 ? 'Đã mở khóa tài khoản.' : 'Đã khóa tài khoản.');
+        AuthController::go('/users');
     }
 
     /**
@@ -67,12 +199,11 @@ class UserController extends Controller
                 AuthController::go('/profile');
             }
 
-            // Giữ lại dữ liệu người dùng vừa nhập để hiển thị lại
             $user['full_name'] = $fullName;
             $user['phone']     = $phone;
         }
 
-        unset($user['password']); // không bao giờ đưa hash mật khẩu ra View
+        unset($user['password']);
 
         $this->respond('users/profile', [
             'user'      => $user,
@@ -91,15 +222,7 @@ class UserController extends Controller
     public function assignRoles(): void
     {
         AuthController::requireRole('admin');
-
-        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
-            AuthController::go('/users');
-        }
-
-        if (!AuthController::verifyCsrf()) {
-            AuthController::setFlash('error', 'Phiên làm việc không hợp lệ. Vui lòng thử lại.');
-            AuthController::go('/users');
-        }
+        $this->guardPost('/users');
 
         $userId = filter_var($_POST['user_id'] ?? null, FILTER_VALIDATE_INT);
         if ($userId === false || $userId === null || User::findById($userId) === null) {
@@ -143,8 +266,258 @@ class UserController extends Controller
         AuthController::go('/users');
     }
 
+    // ------------------------------------------------------------------
+    // Kiểm tra dữ liệu & quy tắc nghiệp vụ (static để dễ kiểm thử)
+    // ------------------------------------------------------------------
+
     /**
-     * Render View nếu đã có; nếu View chưa được làm (Sprint sau) thì trả JSON để vẫn kiểm tra được dữ liệu.
+     * Kiểm tra dữ liệu form thêm tài khoản.
+     * Vai trò (role_ids) là tùy chọn; password_confirm chỉ kiểm tra nếu form có gửi lên.
+     *
+     * @param int[] $validRoleIds danh sách ID vai trò hợp lệ trong hệ thống
+     * @return array ['errors' => string[], 'data' => array dữ liệu đã làm sạch]
+     */
+    public static function validateNewUser(array $input, array $validRoleIds): array
+    {
+        $errors   = [];
+        $username = self::text($input, 'username');
+        $email    = self::text($input, 'email');
+        $fullName = self::text($input, 'full_name');
+        $phone    = self::text($input, 'phone');
+        $password = is_string($input['password'] ?? null) ? $input['password'] : '';
+        $confirm  = array_key_exists('password_confirm', $input)
+            ? (is_string($input['password_confirm']) ? $input['password_confirm'] : '')
+            : null;
+
+        if (!preg_match('/^[A-Za-z0-9_.\-]{3,50}$/', $username)) {
+            $errors[] = 'Tên đăng nhập gồm 3-50 ký tự: chữ, số, dấu chấm, gạch dưới hoặc gạch ngang.';
+        } elseif (User::existsUsername($username)) {
+            $errors[] = 'Tên đăng nhập đã tồn tại.';
+        }
+
+        $errors = array_merge($errors, self::checkEmail($email, null));
+        $errors = array_merge($errors, self::checkPassword($password, $confirm, true));
+        $errors = array_merge($errors, self::checkNameAndPhone($fullName, $phone));
+
+        $status = filter_var($input['status'] ?? 1, FILTER_VALIDATE_INT);
+        if ($status !== 0 && $status !== 1) {
+            $errors[] = 'Trạng thái tài khoản không hợp lệ.';
+        }
+
+        $roleIds  = [];
+        $rawRoles = $input['role_ids'] ?? [];
+        if (!is_array($rawRoles)) {
+            $errors[] = 'Dữ liệu vai trò không hợp lệ.';
+        } else {
+            foreach ($rawRoles as $raw) {
+                $id = filter_var($raw, FILTER_VALIDATE_INT);
+                if ($id === false || !in_array($id, $validRoleIds, true)) {
+                    $errors[] = 'Có vai trò không hợp lệ.';
+                    break;
+                }
+                $roleIds[] = $id;
+            }
+        }
+
+        return [
+            'errors' => $errors,
+            'data'   => [
+                'username'  => $username,
+                'email'     => $email,
+                'password'  => $password,
+                'full_name' => $fullName,
+                'phone'     => $phone,
+                'status'    => $status === 0 ? 0 : 1,
+                'role_ids'  => array_values(array_unique($roleIds)),
+            ],
+        ];
+    }
+
+    /**
+     * Kiểm tra dữ liệu form sửa tài khoản (password để trống = giữ nguyên mật khẩu cũ).
+     * Nếu form có gửi `status` thì kiểm tra 0/1 và chặn admin tự khóa chính mình.
+     *
+     * @param int $actorId ID admin đang thao tác
+     * @return array ['errors' => string[], 'data' => array dữ liệu đã làm sạch]
+     */
+    public static function validateUserUpdate(int $id, array $input, int $actorId = 0): array
+    {
+        $email    = self::text($input, 'email');
+        $fullName = self::text($input, 'full_name');
+        $phone    = self::text($input, 'phone');
+        $password = is_string($input['password'] ?? null) ? $input['password'] : '';
+        $confirm  = array_key_exists('password_confirm', $input)
+            ? (is_string($input['password_confirm']) ? $input['password_confirm'] : '')
+            : null;
+
+        $errors = array_merge(
+            self::checkEmail($email, $id),
+            self::checkPassword($password, $confirm, false),
+            self::checkNameAndPhone($fullName, $phone)
+        );
+
+        $status = null;
+        if (isset($input['status']) && $input['status'] !== '') {
+            $status = filter_var($input['status'], FILTER_VALIDATE_INT);
+            if ($status !== 0 && $status !== 1) {
+                $errors[] = 'Trạng thái tài khoản không hợp lệ.';
+                $status = null;
+            } elseif (!self::canChangeStatus($actorId, $id, $status)) {
+                $errors[] = 'Bạn không thể tự khóa tài khoản của chính mình.';
+                $status = null;
+            }
+        }
+
+        return [
+            'errors' => $errors,
+            'data'   => [
+                'email'     => $email,
+                'full_name' => $fullName,
+                'phone'     => $phone,
+                'password'  => $password,
+                'status'    => $status,
+            ],
+        ];
+    }
+
+    /**
+     * Quy tắc khóa tài khoản: admin không được tự khóa chính mình (mở khóa thì luôn được).
+     */
+    public static function canChangeStatus(int $actorId, int $targetId, int $newStatus): bool
+    {
+        return !($actorId === $targetId && $newStatus !== 1);
+    }
+
+    // ------------------------------------------------------------------
+    // Hàm hỗ trợ nội bộ
+    // ------------------------------------------------------------------
+
+    private static function text(array $input, string $key): string
+    {
+        return is_string($input[$key] ?? null) ? trim($input[$key]) : '';
+    }
+
+    private static function checkEmail(string $email, ?int $excludeId): array
+    {
+        if ($email === '' || mb_strlen($email) > 100 || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return ['Email không hợp lệ.'];
+        }
+        if (User::existsEmail($email, $excludeId)) {
+            return ['Email đã được sử dụng.'];
+        }
+
+        return [];
+    }
+
+    private static function checkPassword(string $password, ?string $confirm, bool $required): array
+    {
+        if ($password === '' && !$required) {
+            return [];
+        }
+
+        $errors = [];
+        if (strlen($password) < 6 || strlen($password) > 72) {
+            $errors[] = 'Mật khẩu phải có từ 6 đến 72 ký tự.';
+        }
+        if ($confirm !== null && $password !== $confirm) {
+            $errors[] = 'Mật khẩu xác nhận không khớp.';
+        }
+
+        return $errors;
+    }
+
+    private static function checkNameAndPhone(string $fullName, string $phone): array
+    {
+        $errors = [];
+        if ($fullName === '' || mb_strlen($fullName) > 100) {
+            $errors[] = 'Họ tên không được để trống và tối đa 100 ký tự.';
+        }
+        if ($phone !== '' && !preg_match('/^[0-9+\-\s().]{8,20}$/', $phone)) {
+            $errors[] = 'Số điện thoại không hợp lệ.';
+        }
+
+        return $errors;
+    }
+
+    /** Dữ liệu người dùng vừa nhập để hiển thị lại trên form (KHÔNG gồm mật khẩu) */
+    private static function oldInput(array $input): array
+    {
+        $roleIds = [];
+        if (is_array($input['role_ids'] ?? null)) {
+            foreach ($input['role_ids'] as $raw) {
+                $id = filter_var($raw, FILTER_VALIDATE_INT);
+                if ($id !== false) {
+                    $roleIds[] = $id;
+                }
+            }
+        }
+
+        return [
+            'username'  => self::text($input, 'username'),
+            'email'     => self::text($input, 'email'),
+            'full_name' => self::text($input, 'full_name'),
+            'phone'     => self::text($input, 'phone'),
+            'status'    => self::text($input, 'status'),
+            'role_ids'  => $roleIds,
+        ];
+    }
+
+    /** Yêu cầu request là POST và đúng CSRF, nếu không thì quay lại trang chỉ định */
+    private function guardPost(string $backPath): void
+    {
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+            AuthController::go($backPath);
+        }
+
+        if (!AuthController::verifyCsrf()) {
+            AuthController::setFlash('error', 'Phiên làm việc không hợp lệ. Vui lòng thử lại.');
+            AuthController::go($backPath);
+        }
+    }
+
+    /** Tìm user theo id lấy từ request; không có thì báo lỗi và quay về danh sách */
+    private function findUserFromRequest(mixed $rawId): array
+    {
+        $id   = filter_var($rawId, FILTER_VALIDATE_INT);
+        $user = ($id !== false && $id !== null) ? User::findById($id) : null;
+
+        if ($user === null) {
+            AuthController::setFlash('error', 'Người dùng không tồn tại.');
+            AuthController::go('/users');
+        }
+
+        return $user;
+    }
+
+    private function renderCreateForm(array $errors, array $old): void
+    {
+        $this->respond('users/create', [
+            'user'      => [],
+            'roles'     => Role::all(),
+            'userRoles' => [],
+            'errors'    => $errors,
+            'old'       => $old,
+            'csrfToken' => AuthController::csrfToken(),
+        ]);
+    }
+
+    private function renderEditForm(array $user, array $errors, array $old): void
+    {
+        $id = (int)$user['id'];
+        unset($user['password']); // không bao giờ đưa hash mật khẩu ra View
+
+        $this->respond('users/edit', [
+            'user'      => $user,
+            'roles'     => Role::all(),
+            'userRoles' => User::getRoles($id),
+            'errors'    => $errors,
+            'old'       => $old,
+            'csrfToken' => AuthController::csrfToken(),
+        ]);
+    }
+
+    /**
+     * Render View nếu đã có; nếu View chưa được làm thì trả JSON để vẫn kiểm tra được dữ liệu.
      */
     private function respond(string $view, array $data): void
     {

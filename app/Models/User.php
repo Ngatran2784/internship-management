@@ -95,16 +95,41 @@ class User
     }
 
     /**
-     * Danh sách người dùng kèm vai trò (KHÔNG trả về cột password)
+     * Danh sách người dùng kèm vai trò (KHÔNG trả về cột password).
+     * Mỗi user có `roles` (mảng tên vai trò) và `roles_list` (chuỗi, ví dụ "lecturer, department_head").
+     *
+     * @param string|null $role    chỉ lấy người có vai trò này (tên, ví dụ 'student')
+     * @param string|null $keyword tìm theo username, email hoặc họ tên
      */
-    public static function all(): array
+    public static function all(?string $role = null, ?string $keyword = null): array
     {
-        $pdo = Database::getConnection();
+        $pdo    = Database::getConnection();
+        $where  = [];
+        $params = [];
 
-        $users = $pdo->query(
-            'SELECT `id`, `username`, `email`, `full_name`, `phone`, `status`, `created_at`
-               FROM `users` ORDER BY `id` ASC'
-        )->fetchAll(PDO::FETCH_ASSOC);
+        if ($role !== null && $role !== '') {
+            $where[] = 'EXISTS (SELECT 1 FROM `user_roles` ur2
+                                INNER JOIN `roles` r2 ON r2.`id` = ur2.`role_id`
+                                WHERE ur2.`user_id` = u.`id` AND r2.`name` = :role)';
+            $params['role'] = $role;
+        }
+
+        if ($keyword !== null && trim($keyword) !== '') {
+            $like = '%' . addcslashes(trim($keyword), '\\%_') . '%';
+            $where[] = '(u.`username` LIKE :kw_username OR u.`email` LIKE :kw_email OR u.`full_name` LIKE :kw_name)';
+            $params['kw_username'] = $like;
+            $params['kw_email']    = $like;
+            $params['kw_name']     = $like;
+        }
+
+        $sql = 'SELECT u.`id`, u.`username`, u.`email`, u.`full_name`, u.`phone`, u.`status`, u.`created_at`
+                  FROM `users` u'
+             . ($where ? ' WHERE ' . implode(' AND ', $where) : '')
+             . ' ORDER BY u.`id` ASC';
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         $rolesByUser = [];
         $rows = $pdo->query(
@@ -119,7 +144,8 @@ class User
         }
 
         foreach ($users as &$user) {
-            $user['roles'] = $rolesByUser[(int)$user['id']] ?? [];
+            $user['roles']      = $rolesByUser[(int)$user['id']] ?? [];
+            $user['roles_list'] = implode(', ', $user['roles']);
         }
         unset($user);
 
@@ -177,5 +203,132 @@ class User
             'phone'     => ($data['phone'] ?? '') !== '' ? (string)$data['phone'] : null,
             'id'        => $id,
         ]);
+    }
+
+    /**
+     * Kiểm tra username đã tồn tại chưa (không phân biệt hoa thường, giống ràng buộc UNIQUE).
+     *
+     * @param int|null $excludeId bỏ qua user này (dùng khi sửa chính user đó)
+     */
+    public static function existsUsername(string $username, ?int $excludeId = null): bool
+    {
+        $pdo = Database::getConnection();
+        $stmt = $pdo->prepare(
+            'SELECT 1 FROM `users` WHERE `username` = :username AND `id` <> :exclude_id LIMIT 1'
+        );
+        $stmt->execute(['username' => trim($username), 'exclude_id' => $excludeId ?? 0]);
+
+        return $stmt->fetchColumn() !== false;
+    }
+
+    /**
+     * Kiểm tra email đã tồn tại chưa
+     *
+     * @param int|null $excludeId bỏ qua user này (dùng khi sửa chính user đó)
+     */
+    public static function existsEmail(string $email, ?int $excludeId = null): bool
+    {
+        $pdo = Database::getConnection();
+        $stmt = $pdo->prepare(
+            'SELECT 1 FROM `users` WHERE `email` = :email AND `id` <> :exclude_id LIMIT 1'
+        );
+        $stmt->execute(['email' => trim($email), 'exclude_id' => $excludeId ?? 0]);
+
+        return $stmt->fetchColumn() !== false;
+    }
+
+    /**
+     * Cập nhật thông tin tài khoản: full_name, email, phone (bắt buộc);
+     * `password` (không rỗng thì đổi mật khẩu, rỗng thì giữ nguyên); `status` (0/1, tùy chọn).
+     * Username không được đổi.
+     *
+     * @throws InvalidArgumentException khi thiếu full_name/email hoặc status không hợp lệ
+     * @throws \PDOException khi email trùng người khác (ràng buộc UNIQUE)
+     */
+    public static function update(int $id, array $data): bool
+    {
+        foreach (['full_name', 'email'] as $field) {
+            if (!isset($data[$field]) || trim((string)$data[$field]) === '') {
+                throw new InvalidArgumentException("Thiếu trường bắt buộc: {$field}");
+            }
+        }
+
+        $sets   = ['`full_name` = :full_name', '`email` = :email', '`phone` = :phone'];
+        $params = [
+            'full_name' => trim((string)$data['full_name']),
+            'email'     => trim((string)$data['email']),
+            'phone'     => ($data['phone'] ?? '') !== '' ? (string)$data['phone'] : null,
+            'id'        => $id,
+        ];
+
+        if (isset($data['password']) && $data['password'] !== '') {
+            $sets[] = '`password` = :password';
+            $params['password'] = password_hash((string)$data['password'], PASSWORD_BCRYPT);
+        }
+
+        if (isset($data['status'])) {
+            $status = (int)$data['status'];
+            if ($status !== 0 && $status !== 1) {
+                throw new InvalidArgumentException('Trạng thái chỉ được là 0 (khóa) hoặc 1 (hoạt động).');
+            }
+            $sets[] = '`status` = :status';
+            $params['status'] = $status;
+        }
+
+        $pdo = Database::getConnection();
+        $stmt = $pdo->prepare('UPDATE `users` SET ' . implode(', ', $sets) . ' WHERE `id` = :id');
+
+        return $stmt->execute($params);
+    }
+
+    /**
+     * Khóa (0) hoặc mở khóa (1) tài khoản
+     *
+     * @throws InvalidArgumentException khi status không phải 0 hoặc 1
+     */
+    public static function updateStatus(int $id, int $status): bool
+    {
+        if ($status !== 0 && $status !== 1) {
+            throw new InvalidArgumentException('Trạng thái chỉ được là 0 (khóa) hoặc 1 (hoạt động).');
+        }
+
+        $pdo = Database::getConnection();
+        $stmt = $pdo->prepare('UPDATE `users` SET `status` = :status WHERE `id` = :id');
+
+        return $stmt->execute(['status' => $status, 'id' => $id]);
+    }
+
+    /**
+     * Tạo người dùng và gán vai trò trong cùng một transaction (lỗi giữa chừng thì hoàn tác toàn bộ)
+     *
+     * @param int[] $roleIds
+     * @return int ID người dùng vừa tạo
+     */
+    public static function createWithRoles(array $data, array $roleIds): int
+    {
+        $pdo = Database::getConnection();
+        $ownTransaction = !$pdo->inTransaction();
+
+        if ($ownTransaction) {
+            $pdo->beginTransaction();
+        }
+
+        try {
+            $id = self::create($data);
+            if ($roleIds) {
+                self::assignRoles($id, $roleIds);
+            }
+
+            if ($ownTransaction) {
+                $pdo->commit();
+            }
+
+            return $id;
+        } catch (\Throwable $e) {
+            if ($ownTransaction && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
     }
 }

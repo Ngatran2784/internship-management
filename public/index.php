@@ -61,6 +61,12 @@ $router->get('/dashboard', function () {
 // --- Quản lý Người dùng & Hồ sơ cá nhân ---
 $router->get('/users',        [UserController::class, 'index']);
 $router->post('/users/roles', [UserController::class, 'assignRoles']);
+$router->get('/users/create',  [UserController::class, 'create']);
+$router->post('/users/create', [UserController::class, 'store']);
+$router->post('/users',        [UserController::class, 'store']);
+$router->get('/users/edit',    [UserController::class, 'edit']);
+$router->post('/users/update', [UserController::class, 'update']);
+$router->post('/users/status', [UserController::class, 'updateStatus']);
 $router->get('/profile',      [UserController::class, 'profile']);
 $router->post('/profile',     [UserController::class, 'profile']);
 
