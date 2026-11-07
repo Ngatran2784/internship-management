@@ -91,8 +91,9 @@ $isPeriodsGroup = ($isPeriodList || $isPeriodCreate || str_starts_with($currentR
                         <button class="nav-link sidebar-group-toggle" type="button"
                                 data-bs-toggle="collapse" data-bs-target="#sidebar-users-menu"
                                 aria-controls="sidebar-users-menu" aria-expanded="<?= $isUsersGroup ? 'true' : 'false' ?>">
-                            <span class="sidebar-group-title">Quản lý người dùng</span>
-                            <i class="ti ti-chevron-down sidebar-group-chevron" aria-hidden="true"></i>
+                            <span class="nav-link-icon"><i class="ti ti-users fs-2"></i></span>
+                            <span class="nav-link-title sidebar-group-title">Quản lý người dùng</span>
+                            <i class="ti ti-chevron-down sidebar-group-chevron ms-auto" aria-hidden="true"></i>
                         </button>
                         <div class="collapse<?= $isUsersGroup ? ' show' : '' ?>" id="sidebar-users-menu">
                             <ul class="navbar-nav sidebar-submenu">
@@ -129,8 +130,9 @@ $isPeriodsGroup = ($isPeriodList || $isPeriodCreate || str_starts_with($currentR
                         <button class="nav-link sidebar-group-toggle" type="button"
                                 data-bs-toggle="collapse" data-bs-target="#sidebar-periods-menu"
                                 aria-controls="sidebar-periods-menu" aria-expanded="<?= $isPeriodsGroup ? 'true' : 'false' ?>">
-                            <span class="sidebar-group-title">Đợt thực tập &amp; đồ án</span>
-                            <i class="ti ti-chevron-down sidebar-group-chevron" aria-hidden="true"></i>
+                            <span class="nav-link-icon"><i class="ti ti-calendar-event fs-2"></i></span>
+                            <span class="nav-link-title sidebar-group-title">Đợt thực tập &amp; đồ án</span>
+                            <i class="ti ti-chevron-down sidebar-group-chevron ms-auto" aria-hidden="true"></i>
                         </button>
                         <div class="collapse<?= $isPeriodsGroup ? ' show' : '' ?>" id="sidebar-periods-menu">
                             <ul class="navbar-nav sidebar-submenu">
@@ -212,8 +214,9 @@ $isPeriodsGroup = ($isPeriodList || $isPeriodCreate || str_starts_with($currentR
                         <button class="nav-link sidebar-group-toggle" type="button"
                                 data-bs-toggle="collapse" data-bs-target="#sidebar-periods-menu"
                                 aria-controls="sidebar-periods-menu" aria-expanded="<?= $isPeriodsGroup ? 'true' : 'false' ?>">
-                            <span class="sidebar-group-title">Đợt thực tập &amp; đồ án</span>
-                            <i class="ti ti-chevron-down sidebar-group-chevron" aria-hidden="true"></i>
+                            <span class="nav-link-icon"><i class="ti ti-calendar-event fs-2"></i></span>
+                            <span class="nav-link-title sidebar-group-title">Đợt thực tập &amp; đồ án</span>
+                            <i class="ti ti-chevron-down sidebar-group-chevron ms-auto" aria-hidden="true"></i>
                         </button>
                         <div class="collapse<?= $isPeriodsGroup ? ' show' : '' ?>" id="sidebar-periods-menu">
                             <ul class="navbar-nav sidebar-submenu">

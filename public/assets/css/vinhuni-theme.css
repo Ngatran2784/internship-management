@@ -179,21 +179,21 @@ a:hover {
 
 /* Nút toggle mở/đóng nhóm menu cha (EXPANDED): không bao giờ mang nền active */
 .app-sidebar .sidebar-group-toggle {
-  color: rgba(255, 255, 255, 0.68) !important;
+  color: rgba(255, 255, 255, 0.82) !important;
   background-color: transparent !important;
   box-shadow: none !important;
   border: 0 !important;
   cursor: pointer;
-  text-transform: uppercase;
-  font-size: 0.68rem !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.08em;
-  padding: 0.6rem 0.875rem !important;
+
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+
+  padding: 0.5rem 0.875rem !important;
 }
 
 .app-sidebar .sidebar-group-toggle:hover {
   color: #ffffff !important;
-  background-color: rgba(255, 255, 255, 0.08) !important;
+  background-color: var(--vinhuni-primary-hover) !important;
   box-shadow: none !important;
 }
 
@@ -204,6 +204,7 @@ a:hover {
 }
 
 .app-sidebar .sidebar-group-chevron {
+  margin-left: auto !important;
   flex: 0 0 auto;
   transition: transform 0.2s ease-in-out;
 }
@@ -268,7 +269,7 @@ a:hover {
   color: var(--vinhuni-text);
   border-bottom: 1px solid var(--vinhuni-border);
   font-weight: 600;
-  text-transform: uppercase;
+
   font-size: 0.72rem;
   letter-spacing: 0.04em;
 }

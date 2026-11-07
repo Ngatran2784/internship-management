@@ -81,20 +81,22 @@ $canManagePeriods = $isAdmin || in_array('training_dept', $currentRoles, true);
             width: 100%;
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            color: rgba(255, 255, 255, .62);
+
+            color: rgba(255, 255, 255, .82);
             border: 0;
             background: transparent;
             text-align: left;
-            text-transform: uppercase;
-            font-size: .68rem;
-            font-weight: 700;
-            letter-spacing: .08em;
+
+            font-size: .875rem;
+            font-weight: 500;
+            line-height: 1.35;
+            padding: 0.5rem 0.875rem;
+
         }
         .app-sidebar .sidebar-group-toggle:hover,
         .app-sidebar .sidebar-group-toggle:focus-visible { color: #fff; }
         .app-sidebar .sidebar-group-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-        .app-sidebar .sidebar-group-chevron { flex: 0 0 auto; transition: transform .2s ease; }
+        .app-sidebar .sidebar-group-chevron { margin-left: auto; flex: 0 0 auto; transition: transform .2s ease; }
         .app-sidebar .sidebar-group-toggle[aria-expanded="true"] .sidebar-group-chevron { transform: rotate(180deg); }
         .app-sidebar .sidebar-submenu { padding-left: .5rem; }
         .app-search { width: min(20rem, 100%); }
