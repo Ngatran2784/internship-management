@@ -276,6 +276,17 @@ $countClosed = count(array_filter($periods, fn($p) => ($p['status'] ?? '') === '
                                             <i class="ti <?= $escape($quickToggle['icon']) ?> me-1"></i><?= $escape($quickToggle['label']) ?>
                                         </button>
                                     <?php endif; ?>
+                                    <?php if ($pStatus === 'draft'): ?>
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-danger btn-delete-period"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#modalDeletePeriod"
+                                                data-period-id="<?= (int)$period['id'] ?>"
+                                                data-period-name="<?= $escape($period['name'] ?? '') ?>"
+                                                title="Xóa đợt bản nháp">
+                                            <i class="ti ti-trash me-1"></i>Xóa
+                                        </button>
+                                    <?php endif; ?>
                                 </div>
                             </td>
                         </tr>
@@ -326,18 +337,89 @@ $countClosed = count(array_filter($periods, fn($p) => ($p['status'] ?? '') === '
     </div>
 </div>
 
+
+<!-- Modal xác nhận xóa đợt bản nháp -->
+<div class="modal modal-blur fade" id="modalDeletePeriod" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-danger">
+                    <i class="ti ti-trash me-2"></i>Xác nhận xóa đợt
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-3">
+                    <span class="avatar avatar-md bg-danger-lt text-danger rounded-circle mb-2">
+                        <i class="ti ti-alert-triangle fs-1"></i>
+                    </span>
+                    <p class="mb-1 text-dark fw-bold">Bạn có chắc chắn muốn xóa đợt bản nháp này?</p>
+                    <p class="text-danger fw-semibold mb-0" id="del-period-name">—</p>
+                </div>
+                <div class="alert alert-warning py-2 px-3 small mb-0">
+                    <i class="ti ti-info-circle me-1"></i>Thao tác này sẽ xóa hoàn toàn đợt bản nháp khỏi hệ thống và không thể hoàn tác.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="ti ti-x me-1"></i>Hủy
+                </button>
+                <form id="form-delete-period" action="<?= $escape($baseUrl) ?>/periods/delete" method="POST" class="m-0">
+                    <input type="hidden" name="_csrf" value="<?= $escape($csrfToken) ?>">
+                    <input type="hidden" name="id" id="del-period-id" value="">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="ti ti-trash me-1"></i>Xác nhận xóa
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 (function () {
     'use strict';
 
+    // 1. Mở Modal xác nhận đổi trạng thái nhanh
     document.querySelectorAll('.btn-quick-toggle').forEach(function (btn) {
         btn.addEventListener('click', function () {
-            document.getElementById('qt-period-id').value  = btn.dataset.periodId;
-            document.getElementById('qt-new-status').value = btn.dataset.newStatus;
-            document.getElementById('qt-confirm-text').textContent = btn.dataset.confirmMsg;
+            var periodId   = btn.getAttribute('data-period-id') || '';
+            var newStatus  = btn.getAttribute('data-new-status') || '';
+            var confirmMsg = btn.getAttribute('data-confirm-msg') || 'Bạn có chắc chắn muốn thực hiện thao tác này?';
 
-            var modal = new bootstrap.Modal(document.getElementById('modalQuickToggle'));
-            modal.show();
+            var idInput     = document.getElementById('qt-period-id');
+            var statusInput = document.getElementById('qt-new-status');
+            var textEl      = document.getElementById('qt-confirm-text');
+            var modalEl     = document.getElementById('modalQuickToggle');
+
+            if (idInput) idInput.value = periodId;
+            if (statusInput) statusInput.value = newStatus;
+            if (textEl) textEl.textContent = confirmMsg;
+
+            if (modalEl && typeof bootstrap !== 'undefined') {
+                var modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                modal.show();
+            }
+        });
+    });
+
+    // 2. Mở Modal xác nhận xóa đợt bản nháp
+    document.querySelectorAll('.btn-delete-period').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+            var periodId   = btn.getAttribute('data-period-id') || '';
+            var periodName = btn.getAttribute('data-period-name') || '';
+
+            var idInput = document.getElementById('del-period-id');
+            var nameEl  = document.getElementById('del-period-name');
+            var modalEl = document.getElementById('modalDeletePeriod');
+
+            if (idInput) idInput.value = periodId;
+            if (nameEl)  nameEl.textContent = periodName || ('ID #' + periodId);
+
+            if (modalEl && typeof bootstrap !== 'undefined') {
+                var modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                modal.show();
+            }
         });
     });
 })();

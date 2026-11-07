@@ -141,7 +141,8 @@ class AuthController extends Controller
 
         $_SESSION['user_id']    = (int)$user['id'];
         $_SESSION['username']   = $user['username'];
-        $_SESSION['full_name']  = $user['full_name'];
+        $_SESSION['full_name']   = $user['full_name'];
+        $_SESSION['avatar_path'] = $user['avatar_path'] ?? $user['avatar'] ?? null;
         $_SESSION['roles']      = User::getRoles((int)$user['id']);
         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
     }

@@ -38,7 +38,8 @@ CREATE TABLE IF NOT EXISTS `users` (
     `password` VARCHAR(255) NOT NULL COMMENT 'Mật khẩu đã được mã hóa Bcrypt an toàn',
     `full_name` VARCHAR(100) NOT NULL COMMENT 'Họ và tên đầy đủ',
     `phone` VARCHAR(20) NULL COMMENT 'Số điện thoại liên lạc',
-    `avatar` VARCHAR(255) NULL COMMENT 'Đường dẫn ảnh đại diện',
+    `avatar` VARCHAR(255) NULL COMMENT 'Đường dẫn ảnh đại diện (kế thừa cũ)',
+    `avatar_path` VARCHAR(255) NULL COMMENT 'Đường dẫn ảnh đại diện chuẩn hóa',
     `status` TINYINT(1) NOT NULL DEFAULT 1 COMMENT 'Trạng thái tài khoản: 1 = Hoạt động, 0 = Bị khóa',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -79,13 +80,39 @@ CREATE TABLE IF NOT EXISTS `internship_periods` (
     CONSTRAINT `chk_period_dates` CHECK (`end_date` >= `start_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Quản lý danh mục các đợt thực tập và đồ án tốt nghiệp sinh viên';
 
+-- 5. BẢNG QUẢN LÝ ĐỀ TÀI THỰC TẬP VÀ ĐỒ ÁN (topics)
+-- Chức năng: Lưu trữ danh mục đề tài do Giảng viên, Bộ môn, Doanh nghiệp hoặc Sinh viên đề xuất
+CREATE TABLE IF NOT EXISTS `topics` (
+    `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY COMMENT 'Khóa chính tự tăng',
+    `code` VARCHAR(50) NOT NULL COMMENT 'Mã đề tài định danh duy nhất (vd: DT-2026-001, DA-2026-002)',
+    `name` VARCHAR(255) NOT NULL COMMENT 'Tên hiển thị của đề tài',
+    `description` TEXT NULL COMMENT 'Mô tả chi tiết nội dung, mục tiêu, yêu cầu công nghệ của đề tài',
+    `type` ENUM('internship', 'graduation_project') NOT NULL COMMENT 'Loại đề tài: Thực tập hoặc Đồ án tốt nghiệp',
+    `period_id` INT UNSIGNED NOT NULL COMMENT 'Khóa ngoại tham chiếu đến đợt (internship_periods.id)',
+    `proposer_id` INT UNSIGNED NOT NULL COMMENT 'Khóa ngoại tham chiếu đến người đề xuất (users.id)',
+    `max_students` INT UNSIGNED NOT NULL DEFAULT 1 COMMENT 'Số lượng sinh viên tối đa có thể tham gia',
+    `status` ENUM('draft', 'pending', 'approved', 'rejected') NOT NULL DEFAULT 'draft' COMMENT 'Trạng thái đề tài',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Thời điểm tạo đề tài',
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Thời điểm cập nhật cuối',
+
+    UNIQUE KEY `uk_topics_code` (`code`),
+    INDEX `idx_topics_period_id` (`period_id`),
+    INDEX `idx_topics_proposer_id` (`proposer_id`),
+    INDEX `idx_topics_status` (`status`),
+    INDEX `idx_topics_type` (`type`),
+    INDEX `idx_topics_created_at` (`created_at`),
+
+    CONSTRAINT `fk_topics_period` FOREIGN KEY (`period_id`)
+        REFERENCES `internship_periods` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT `fk_topics_proposer` FOREIGN KEY (`proposer_id`)
+        REFERENCES `users` (`id`) ON UPDATE CASCADE ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Quản lý danh mục các đề tài thực tập và đồ án tốt nghiệp sinh viên';
+
 -- ==============================================================================
--- ĐỊNH HƯỚNG CÁC PHÂN HỆ TIẾP THEO (DỰ KIẾN TRIỂN KHAI TỪ SPRINT 2+):
--- - periods (Đợt thực tập / Đồ án tốt nghiệp theo năm học, học kỳ)
+-- ĐỊNH HƯỚNG CÁC PHÂN HỆ TIẾP THEO (DỰ KIẾN TRIỂN KHAI TỪ SPRINT 4+):
 -- - student_profiles (Thông tin chi tiết sinh viên: lớp, ngành, GPA, CV)
 -- - lecturer_profiles (Thông tin giảng viên: chuyên môn, hướng nghiên cứu, quota)
 -- - enterprise_profiles (Thông tin doanh nghiệp: địa chỉ, lĩnh vực, liên hệ)
--- - topics (Đề tài đồ án: tên, mô tả, mục tiêu, công nghệ, số lượng SV, duyệt đề tài)
 -- - topic_wishes (Nguyện vọng đăng ký và xếp hạng đề tài của sinh viên)
 -- - matchings (Kết quả ghép cặp sinh viên - đề tài qua thuật toán Gale-Shapley/Hungaria)
 -- - milestones & progress_reports (Kế hoạch công việc, nhật ký thực tập, báo cáo đợt)

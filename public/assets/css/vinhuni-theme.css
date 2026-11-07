@@ -1,0 +1,319 @@
+/**
+ * Vinh University (VinhUni) Theme - Dark Blue Palette
+ * Hệ thống Quản lý Thực tập & Đồ án Sinh viên
+ * Reference: https://vinhuni.edu.vn | https://login.vinhuni.edu.vn
+ */
+
+:root {
+  /* Bảng màu nhận diện chính thức Trường Đại học Vinh */
+  --vinhuni-primary: #003B71;
+  --vinhuni-primary-dark: #002B55;
+  --vinhuni-primary-hover: #1769AA;
+  --vinhuni-primary-light: #EAF2FA;
+  --vinhuni-bg: #F4F7FB;
+  --vinhuni-surface: #FFFFFF;
+  --vinhuni-text: #243449;
+  --vinhuni-border: #DCE5EF;
+
+  /* Ghi đè biến hệ thống của Tabler / Bootstrap 5 */
+  --tblr-primary: #003B71;
+  --tblr-primary-rgb: 0, 59, 113;
+  --tblr-primary-fg: #ffffff;
+  --tblr-primary-dark: #002B55;
+  --tblr-primary-hover: #1769AA;
+  --tblr-primary-lt: #EAF2FA;
+  --tblr-body-bg: #F4F7FB;
+  --tblr-body-color: #243449;
+  --tblr-border-color: #DCE5EF;
+  --tblr-link-color: #003B71;
+  --tblr-link-hover-color: #1769AA;
+}
+
+/* Nền toàn trang & Màu chữ */
+body, .page, .page-wrapper {
+  background-color: var(--vinhuni-bg) !important;
+  color: var(--vinhuni-text);
+}
+
+/* Liên kết (Links) */
+a {
+  color: var(--vinhuni-primary);
+  text-decoration: none;
+  transition: color 0.15s ease-in-out;
+}
+
+a:hover {
+  color: var(--vinhuni-primary-hover);
+}
+
+/* Nút chính (Primary Button #003B71) */
+.btn-primary {
+  background-color: var(--vinhuni-primary) !important;
+  border-color: var(--vinhuni-primary) !important;
+  color: #ffffff !important;
+  box-shadow: 0 1px 3px rgba(0, 59, 113, 0.25);
+  transition: all 0.15s ease-in-out;
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+  background-color: var(--vinhuni-primary-hover) !important; /* #1769AA */
+  border-color: var(--vinhuni-primary-hover) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 10px rgba(0, 59, 113, 0.35);
+}
+
+.btn-primary:active,
+.btn-primary.active {
+  background-color: var(--vinhuni-primary-dark) !important; /* #002B55 */
+  border-color: var(--vinhuni-primary-dark) !important;
+  color: #ffffff !important;
+}
+
+.btn-primary:disabled,
+.btn-primary.disabled {
+  background-color: var(--vinhuni-primary) !important;
+  border-color: var(--vinhuni-primary) !important;
+  opacity: 0.65 !important;
+  box-shadow: none !important;
+}
+
+/* Nút viền chính (Outline Primary Button) */
+.btn-outline-primary {
+  color: var(--vinhuni-primary) !important;
+  border-color: var(--vinhuni-primary) !important;
+  background-color: transparent !important;
+  transition: all 0.15s ease-in-out;
+}
+
+.btn-outline-primary:hover,
+.btn-outline-primary:focus {
+  background-color: var(--vinhuni-primary) !important;
+  border-color: var(--vinhuni-primary) !important;
+  color: #ffffff !important;
+}
+
+/* Badges & Backgrounds nhận diện */
+.badge.bg-primary {
+  background-color: var(--vinhuni-primary) !important;
+  color: #ffffff !important;
+}
+
+.bg-primary {
+  background-color: var(--vinhuni-primary) !important;
+}
+
+.bg-primary-lt {
+  background-color: var(--vinhuni-primary-light) !important; /* #EAF2FA */
+  color: var(--vinhuni-primary) !important; /* #003B71 */
+}
+
+.text-primary {
+  color: var(--vinhuni-primary) !important;
+}
+
+/* Card & Surface */
+.card {
+  background-color: var(--vinhuni-surface) !important;
+  border: 1px solid var(--vinhuni-border) !important;
+  box-shadow: 0 1px 3px rgba(36, 52, 73, 0.05);
+  border-radius: 8px;
+}
+
+.card-header {
+  background-color: #ffffff;
+  border-bottom: 1px solid var(--vinhuni-border);
+}
+
+/* Sidebar nhận diện VinhUni (Xanh navy đậm #002B55) */
+.app-sidebar {
+  background-color: var(--vinhuni-primary-dark) !important; /* #002B55 */
+  border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.app-sidebar .navbar-brand {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  background-color: rgba(0, 0, 0, 0.22);
+  padding: 0.85rem 1rem !important;
+}
+
+/* Các liên kết điều hướng trong Sidebar */
+.app-sidebar .nav-link {
+  color: rgba(255, 255, 255, 0.82) !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  border-radius: 4px;
+  margin: 1px 0;
+  transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out;
+}
+
+/* Trạng thái HOVER: màu nhẹ hơn active (#1769AA), chỉ áp dụng khi chuột trỏ vào */
+.app-sidebar a.nav-link:hover,
+.app-sidebar .sidebar-submenu a.nav-link:hover {
+  color: #ffffff !important;
+  background-color: var(--vinhuni-primary-hover) !important; /* #1769AA */
+  box-shadow: none !important;
+}
+
+/* Trạng thái ACTIVE: chỉ duy nhất 1 mục điều hướng trang hiện tại */
+.app-sidebar a.nav-link.active,
+.app-sidebar .sidebar-submenu a.nav-link.active {
+  color: #ffffff !important;
+  background-color: var(--vinhuni-primary) !important; /* #003B71 */
+  box-shadow: inset 4px 0 0 #58a6ff !important;
+  font-weight: 600 !important;
+}
+
+.app-sidebar a.nav-link.active .nav-link-icon,
+.app-sidebar .sidebar-submenu a.nav-link.active .nav-link-icon {
+  color: #79c0ff !important;
+}
+
+/* Trạng thái FOCUS bằng bàn phím: viền sáng rõ, không tô nền xanh nhầm với active */
+.app-sidebar a.nav-link:focus-visible,
+.app-sidebar button.nav-link:focus-visible {
+  outline: 2px solid #58a6ff !important;
+  outline-offset: -2px !important;
+  box-shadow: none !important;
+}
+
+/* Nút toggle mở/đóng nhóm menu cha (EXPANDED): không bao giờ mang nền active */
+.app-sidebar .sidebar-group-toggle {
+  color: rgba(255, 255, 255, 0.68) !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  border: 0 !important;
+  cursor: pointer;
+  text-transform: uppercase;
+  font-size: 0.68rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.08em;
+  padding: 0.6rem 0.875rem !important;
+}
+
+.app-sidebar .sidebar-group-toggle:hover {
+  color: #ffffff !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: none !important;
+}
+
+.app-sidebar .sidebar-group-toggle[aria-expanded="true"] {
+  color: #ffffff !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.app-sidebar .sidebar-group-chevron {
+  flex: 0 0 auto;
+  transition: transform 0.2s ease-in-out;
+}
+
+.app-sidebar .sidebar-group-toggle[aria-expanded="true"] .sidebar-group-chevron {
+  transform: rotate(180deg);
+}
+
+/* Menu con thụt lề chuẩn */
+.app-sidebar .sidebar-submenu {
+  padding-left: 0.5rem;
+}
+
+.app-sidebar .sidebar-submenu .nav-link {
+  font-size: 0.84rem;
+  padding: 0.45rem 0.75rem 0.45rem 1rem;
+}
+
+/* Trạng thái chưa triển khai: màu sắc cân đối hài hòa, không tương tác */
+.app-sidebar .nav-link.disabled {
+  color: rgba(255, 255, 255, 0.58) !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  opacity: 1 !important;
+  cursor: default !important;
+  pointer-events: none;
+  user-select: none;
+}
+
+.app-sidebar .nav-link.disabled .nav-link-icon {
+  color: rgba(255, 255, 255, 0.48) !important;
+}
+
+/* Topbar Header */
+.app-topbar {
+  background-color: #ffffff !important;
+  border-bottom: 1px solid var(--vinhuni-border) !important;
+}
+
+/* Form Controls Focus */
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--vinhuni-primary) !important;
+  box-shadow: 0 0 0 0.25rem rgba(0, 59, 113, 0.2) !important;
+}
+
+.form-check-input:checked {
+  background-color: var(--vinhuni-primary) !important;
+  border-color: var(--vinhuni-primary) !important;
+}
+
+/* Phân trang (Pagination) */
+.page-item.active .page-link {
+  background-color: var(--vinhuni-primary) !important;
+  border-color: var(--vinhuni-primary) !important;
+  color: #ffffff !important;
+}
+
+/* Table header & Rows */
+.table thead th {
+  background-color: #f8fafc;
+  color: var(--vinhuni-text);
+  border-bottom: 1px solid var(--vinhuni-border);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
+
+.table tbody tr:hover {
+  background-color: rgba(234, 242, 250, 0.4);
+}
+
+/* Logo styling */
+.vinhuni-logo-login {
+  max-width: 90px;
+  height: auto;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.08));
+}
+
+.vinhuni-logo-sidebar {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+}
+
+/* Bảo toàn màu cảnh báo/nguy hiểm/lỗi theo nghiệp vụ */
+.alert-danger {
+  background-color: #fef2f2 !important;
+  border-color: #fee2e2 !important;
+  color: #991b1b !important;
+}
+
+.btn-danger {
+  background-color: #d63939 !important;
+  border-color: #d63939 !important;
+  color: #ffffff !important;
+}
+
+.btn-outline-danger {
+  color: #d63939 !important;
+  border-color: #d63939 !important;
+}
+
+.badge.bg-danger {
+  background-color: #d63939 !important;
+  color: #ffffff !important;
+}
+
+.bg-danger-lt {
+  background-color: #fce8e8 !important;
+  color: #d63939 !important;
+}

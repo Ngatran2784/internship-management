@@ -23,7 +23,7 @@ $roleLabels = [
 ];
 
 $roleBadgeClass = [
-    'admin'           => 'bg-red',
+    'admin'           => 'bg-primary text-white',
     'training_dept'   => 'bg-purple',
     'department_head' => 'bg-orange',
     'lecturer'        => 'bg-blue',
@@ -45,22 +45,40 @@ if (count($nameParts) >= 2) {
     $initials = 'ND';
 }
 
-// ── Màu avatar nhất quán theo username ───────────────────────────────────
+// ── Màu avatar nhất quán theo username khi chưa có ảnh ──────────────────
 $avatarPalette = ['bg-blue','bg-azure','bg-indigo','bg-purple','bg-pink',
                   'bg-red','bg-orange','bg-yellow','bg-lime','bg-green','bg-teal','bg-cyan'];
 $avatarBg      = $avatarPalette[abs(crc32($user['username'] ?? '')) % count($avatarPalette)];
 
+// ── Trạng thái ảnh đại diện ─────────────────────────────────────────────
+$userAvatar = $user['avatar_path'] ?? ($user['avatar'] ?? null);
+$hasAvatar  = !empty($userAvatar);
+$avatarUrl  = $hasAvatar ? ($baseUrl . '/' . ltrim($userAvatar, '/')) : '';
+
 // ── Phân loại lỗi cho đúng tab ───────────────────────────────────────────
-$pwErrors   = [];
-$infoErrors = [];
+$pwErrors     = [];
+$infoErrors   = [];
+$avatarErrors = [];
 foreach ($errors as $e) {
     if (str_contains($e, 'ật khẩu')) {
         $pwErrors[] = $e;
+    } elseif (str_contains($e, 'ảnh') || str_contains($e, 'Ảnh') || str_contains($e, 'tệp') || str_contains($e, 'Tệp')) {
+        $avatarErrors[] = $e;
     } else {
         $infoErrors[] = $e;
     }
 }
-$activeTab = (!empty($pwErrors) && empty($infoErrors)) ? 'password' : 'info';
+
+$tabParam = $_GET['tab'] ?? ($activeTab ?? 'info');
+if (!empty($avatarErrors)) {
+    $activeTab = 'avatar';
+} elseif (!empty($pwErrors)) {
+    $activeTab = 'password';
+} elseif (!empty($infoErrors)) {
+    $activeTab = 'info';
+} else {
+    $activeTab = in_array($tabParam, ['info', 'password', 'avatar'], true) ? $tabParam : 'info';
+}
 
 $isActive = (int)($user['status'] ?? 1) === 1;
 ?>
@@ -77,7 +95,7 @@ $isActive = (int)($user['status'] ?? 1) === 1;
     position: relative;
     overflow: hidden;
     padding: 2.25rem 2rem 5rem;
-    background: linear-gradient(135deg, #1a56db 0%, #5850ec 60%, #7c3aed 100%);
+    background: linear-gradient(135deg, #002B55 0%, #003B71 60%, #1769AA 100%);
     border-radius: var(--tblr-border-radius-lg) var(--tblr-border-radius-lg) 0 0;
 }
 .pr-hero::before {
@@ -99,13 +117,13 @@ $isActive = (int)($user['status'] ?? 1) === 1;
     pointer-events: none;
 }
 
-/* Avatar viết tắt lớn */
+/* Avatar tròn lớn */
 .pr-avatar {
-    width: 5.5rem;
-    height: 5.5rem;
+    width: 6rem;
+    height: 6rem;
     border-radius: 50%;
-    border: 4px solid rgba(255,255,255,.35);
-    box-shadow: 0 8px 24px rgba(0,0,0,.2);
+    border: 4px solid rgba(255,255,255,.5);
+    box-shadow: 0 8px 24px rgba(0,0,0,.25);
     font-size: 1.85rem;
     font-weight: 800;
     letter-spacing: .02em;
@@ -114,6 +132,32 @@ $isActive = (int)($user['status'] ?? 1) === 1;
     justify-content: center;
     flex-shrink: 0;
     color: #fff;
+    object-fit: cover;
+    background-color: #002B55;
+}
+
+/* Preview ảnh đại diện */
+.pr-avatar-preview {
+    width: 130px;
+    height: 130px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid #fff;
+    box-shadow: 0 4px 14px rgba(0,0,0,.15);
+}
+
+.pr-avatar-dropzone {
+    border: 2px dashed #b8c9dc;
+    border-radius: 12px;
+    background-color: #f8fafc;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    padding: 1.75rem 1.25rem;
+    text-align: center;
+}
+.pr-avatar-dropzone:hover, .pr-avatar-dropzone.dragover {
+    border-color: var(--vinhuni-primary, #003B71);
+    background-color: #eaf2fa;
 }
 
 /* Card body offset (kéo nội dung lên chồng hero) */
@@ -140,41 +184,43 @@ $isActive = (int)($user['status'] ?? 1) === 1;
     margin-top: .1rem;
 }
 .pr-stat-label {
-    font-size: .72rem;
-    font-weight: 600;
-    letter-spacing: .06em;
+    font-size: .75rem;
     text-transform: uppercase;
+    letter-spacing: .05em;
     color: var(--tblr-secondary);
-    margin-bottom: .2rem;
+    margin-bottom: .15rem;
 }
 .pr-stat-value {
-    font-weight: 500;
-    word-break: break-word;
+    font-size: .875rem;
+    font-weight: 600;
+    color: var(--tblr-body-color);
+    word-break: break-all;
 }
 
-/* Tab navigation */
+/* Nav tabs */
 .pr-tabs {
-    border-bottom: none;
-    padding: 0 1rem;
-    gap: .25rem;
+    border-bottom: 2px solid var(--tblr-border-color);
+    padding: 0 1.5rem;
+    gap: .5rem;
 }
 .pr-tabs .nav-link {
     border: none;
-    border-bottom: 3px solid transparent;
+    border-bottom: 2px solid transparent;
     border-radius: 0;
-    padding: 1rem 1.1rem;
+    padding: 1rem .75rem;
     font-weight: 600;
     font-size: .875rem;
     color: var(--tblr-secondary);
+    margin-bottom: -2px;
     display: flex;
     align-items: center;
     gap: .45rem;
     transition: color .15s, border-color .15s;
 }
-.pr-tabs .nav-link:hover    { color: var(--tblr-primary); }
+.pr-tabs .nav-link:hover    { color: var(--vinhuni-primary, #003B71); }
 .pr-tabs .nav-link.active   {
-    color: var(--tblr-primary);
-    border-bottom-color: var(--tblr-primary);
+    color: var(--vinhuni-primary, #003B71);
+    border-bottom-color: var(--vinhuni-primary, #003B71);
     background: transparent;
 }
 .pr-tabs .nav-link .ti      { font-size: 1.1rem; }
@@ -209,7 +255,7 @@ $isActive = (int)($user['status'] ?? 1) === 1;
     <div class="row g-4">
 
         <!-- ══════════════════════════════════════════════════════════════
-             CỘT TRÁI – Thẻ thông tin tóm tắt
+             CỘT TRÁI – Thẻ thông tin tóm tắt & Avatar
         ══════════════════════════════════════════════════════════════════ -->
         <div class="col-lg-4 col-xl-3">
             <div class="card shadow-sm border-0 overflow-hidden h-100">
@@ -217,10 +263,26 @@ $isActive = (int)($user['status'] ?? 1) === 1;
                 <!-- Hero banner -->
                 <div class="pr-hero">
                     <div class="d-flex flex-column align-items-center text-center gap-3 position-relative">
-                        <!-- Avatar -->
-                        <span class="pr-avatar <?= $escape($avatarBg) ?>">
-                            <?= $escape($initials) ?>
-                        </span>
+                        <!-- Avatar Wrapper -->
+                        <div class="position-relative d-inline-block">
+                            <?php if ($hasAvatar): ?>
+                                <img src="<?= $escape($avatarUrl) ?>"
+                                     alt="Ảnh đại diện"
+                                     class="pr-avatar rounded-circle"
+                                     id="heroAvatarImg">
+                            <?php else: ?>
+                                <span class="pr-avatar rounded-circle <?= $escape($avatarBg) ?>" id="heroAvatarPlaceholder">
+                                    <?= $escape($initials) ?>
+                                </span>
+                            <?php endif; ?>
+                            <button type="button"
+                                    class="btn btn-sm btn-icon rounded-circle btn-primary position-absolute bottom-0 end-0 shadow"
+                                    style="transform: translate(10%, 10%); width: 2.25rem; height: 2.25rem;"
+                                    onclick="document.getElementById('tab-btn-avatar').click();"
+                                    title="Thay đổi ảnh đại diện">
+                                <i class="ti ti-camera fs-2"></i>
+                            </button>
+                        </div>
                         <!-- Tên & username -->
                         <div class="text-white">
                             <h2 class="h4 fw-bold mb-1 text-white"><?= $escape($user['full_name'] ?? '') ?></h2>
@@ -256,18 +318,20 @@ $isActive = (int)($user['status'] ?? 1) === 1;
                             </div>
                         </div>
 
-                        <!-- Điện thoại -->
+                        <!-- Số điện thoại -->
                         <div class="pr-stat">
-                            <span class="pr-stat-icon bg-teal-lt text-teal">
+                            <span class="pr-stat-icon bg-green-lt text-green">
                                 <i class="ti ti-phone"></i>
                             </span>
                             <div>
-                                <div class="pr-stat-label">Điện thoại</div>
-                                <?php if (!empty($user['phone'])): ?>
-                                    <div class="pr-stat-value"><?= $escape($user['phone']) ?></div>
-                                <?php else: ?>
-                                    <div class="pr-stat-value text-secondary fst-italic">Chưa cập nhật</div>
-                                <?php endif; ?>
+                                <div class="pr-stat-label">Số điện thoại</div>
+                                <div class="pr-stat-value">
+                                    <?php if (!empty($user['phone'])): ?>
+                                        <?= $escape($user['phone']) ?>
+                                    <?php else: ?>
+                                        <span class="text-secondary fw-normal fst-italic">Chưa cập nhật</span>
+                                    <?php endif; ?>
+                                </div>
                             </div>
                         </div>
 
@@ -313,7 +377,7 @@ $isActive = (int)($user['status'] ?? 1) === 1;
         </div><!-- /col-left -->
 
         <!-- ══════════════════════════════════════════════════════════════
-             CỘT PHẢI – Tab chỉnh sửa thông tin
+             CỘT PHẢI – Tab chức năng hồ sơ
         ══════════════════════════════════════════════════════════════════ -->
         <div class="col-lg-8 col-xl-9">
             <div class="card shadow-sm border-0 h-100">
@@ -330,6 +394,17 @@ $isActive = (int)($user['status'] ?? 1) === 1;
                                     aria-controls="tab-info"
                                     aria-selected="<?= $activeTab === 'info' ? 'true' : 'false' ?>">
                                 <i class="ti ti-user-circle"></i>Thông tin cá nhân
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link <?= $activeTab === 'avatar' ? 'active' : '' ?>"
+                                    id="tab-btn-avatar"
+                                    data-bs-toggle="tab"
+                                    data-bs-target="#tab-avatar"
+                                    type="button" role="tab"
+                                    aria-controls="tab-avatar"
+                                    aria-selected="<?= $activeTab === 'avatar' ? 'true' : 'false' ?>">
+                                <i class="ti ti-photo-edit"></i>Ảnh đại diện
                             </button>
                         </li>
                         <li class="nav-item" role="presentation">
@@ -418,67 +493,162 @@ $isActive = (int)($user['status'] ?? 1) === 1;
 
                                     <!-- Email (readonly) -->
                                     <div class="col-md-6">
-                                        <label class="form-label" for="email_ro">Email</label>
+                                        <label class="form-label" for="ro_email">
+                                            Email
+                                            <span class="badge bg-secondary-lt ms-1">Cố định</span>
+                                        </label>
                                         <div class="input-group">
-                                            <span class="input-group-text">
+                                            <span class="input-group-text text-secondary">
                                                 <i class="ti ti-mail"></i>
                                             </span>
                                             <input type="email"
                                                    class="form-control"
-                                                   id="email_ro"
+                                                   id="ro_email"
                                                    value="<?= $escape($user['email'] ?? '') ?>"
-                                                   readonly tabindex="-1">
+                                                   readonly
+                                                   tabindex="-1">
                                         </div>
-                                        <div class="form-hint">Quản lý bởi quản trị viên.</div>
+                                        <div class="form-hint">Liên hệ Quản trị viên nếu cần đổi email.</div>
                                     </div>
 
                                     <!-- Tên đăng nhập (readonly) -->
                                     <div class="col-md-6">
-                                        <label class="form-label" for="username_ro">Tên đăng nhập</label>
+                                        <label class="form-label" for="ro_username">
+                                            Tên đăng nhập
+                                            <span class="badge bg-secondary-lt ms-1">Cố định</span>
+                                        </label>
                                         <div class="input-group">
-                                            <span class="input-group-text">
+                                            <span class="input-group-text text-secondary">
                                                 <i class="ti ti-at"></i>
                                             </span>
                                             <input type="text"
                                                    class="form-control"
-                                                   id="username_ro"
+                                                   id="ro_username"
                                                    value="<?= $escape($user['username'] ?? '') ?>"
-                                                   readonly tabindex="-1">
+                                                   readonly
+                                                   tabindex="-1">
                                         </div>
-                                        <div class="form-hint">Không thể thay đổi.</div>
+                                        <div class="form-hint">Tên đăng nhập không thể thay đổi.</div>
                                     </div>
 
-                                </div><!-- /row -->
+                                </div><!-- /row g-3 -->
 
-                                <!-- Roles display -->
-                                <?php if (!empty($roles)): ?>
-                                    <div class="mt-3 pt-3 border-top">
-                                        <div class="form-label text-secondary small mb-2">
-                                            <i class="ti ti-shield me-1"></i>Vai trò được gán
-                                        </div>
-                                        <div class="d-flex flex-wrap gap-2">
-                                            <?php foreach ($roles as $role): ?>
-                                                <span class="badge <?= $escape($roleBadgeClass[$role] ?? 'bg-secondary') ?>-lt text-<?= $escape(str_replace('bg-', '', $roleBadgeClass[$role] ?? 'bg-secondary')) ?> border border-<?= $escape(str_replace('bg-', '', $roleBadgeClass[$role] ?? 'bg-secondary')) ?>-subtle px-3 py-2">
-                                                    <i class="ti ti-user-check me-1"></i>
-                                                    <?= $escape($roleLabels[$role] ?? $role) ?>
-                                                </span>
-                                            <?php endforeach; ?>
-                                        </div>
-                                    </div>
-                                <?php endif; ?>
-
-                                <div class="d-flex justify-content-end mt-4">
+                                <div class="mt-4 pt-3 border-top d-flex gap-2 justify-content-end">
                                     <button type="submit" class="btn btn-primary px-4">
                                         <i class="ti ti-device-floppy me-1"></i>Lưu thay đổi
                                     </button>
                                 </div>
 
                             </form>
-                        </div><!-- /card-body -->
-                    </div><!-- /tab-pane info -->
+                        </div>
+                    </div><!-- /tab-info -->
 
                     <!-- ═══════════════════════════════════
-                         TAB 2 – Đổi mật khẩu
+                         TAB 2 – Quản lý Ảnh đại diện
+                    ═══════════════════════════════════════ -->
+                    <div class="tab-pane fade <?= $activeTab === 'avatar' ? 'show active' : '' ?>"
+                         id="tab-avatar" role="tabpanel" aria-labelledby="tab-btn-avatar">
+                        <div class="card-body p-4">
+
+                            <!-- Lỗi avatar -->
+                            <?php if (!empty($avatarErrors)): ?>
+                                <div class="alert alert-danger d-flex gap-2 mb-4" role="alert">
+                                    <i class="ti ti-alert-circle fs-3 flex-shrink-0"></i>
+                                    <div>
+                                        <div class="fw-semibold mb-1">Không thể cập nhật ảnh đại diện:</div>
+                                        <ul class="mb-0 ps-3">
+                                            <?php foreach ($avatarErrors as $e): ?>
+                                                <li><?= $escape($e) ?></li>
+                                            <?php endforeach; ?>
+                                        </ul>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+
+                            <div class="row g-4 align-items-center">
+                                <!-- Khung xem trước ảnh tròn -->
+                                <div class="col-md-5 text-center">
+                                    <div class="mb-3">
+                                        <div class="text-secondary small fw-bold text-uppercase mb-2">Ảnh hiện tại / Xem trước</div>
+                                        <div id="avatarPreviewContainer" class="d-inline-block position-relative">
+                                            <?php if ($hasAvatar): ?>
+                                                <img src="<?= $escape($avatarUrl) ?>"
+                                                     alt="Ảnh đại diện"
+                                                     class="pr-avatar-preview"
+                                                     id="avatarPreviewImg">
+                                            <?php else: ?>
+                                                <span class="pr-avatar-preview <?= $escape($avatarBg) ?> d-inline-flex align-items-center justify-content-center text-white fs-1 fw-bold"
+                                                      id="avatarPreviewPlaceholder">
+                                                    <?= $escape($initials) ?>
+                                                </span>
+                                                <img src="" alt="Xem trước" class="pr-avatar-preview d-none" id="avatarPreviewImg">
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                    <div id="fileInfoBadge" class="d-none">
+                                        <span class="badge bg-primary-lt px-2 py-1" id="fileInfoText"></span>
+                                    </div>
+                                </div>
+
+                                <!-- Form tải lên & tùy chọn -->
+                                <div class="col-md-7">
+                                    <h3 class="h4 fw-bold text-dark mb-2">Tải lên ảnh mới</h3>
+                                    <p class="text-secondary small mb-3">
+                                        Tải lên hình ảnh khuôn mặt rõ nét của bạn. Ảnh sẽ được hiển thị dạng hình tròn tại Trang cá nhân và Thanh điều hướng Header.
+                                    </p>
+
+                                    <form action="<?= $escape($baseUrl) ?>/profile" method="POST" enctype="multipart/form-data" id="form-upload-avatar">
+                                        <input type="hidden" name="_csrf" value="<?= $escape($csrfToken) ?>">
+                                        <input type="hidden" name="_action" value="upload_avatar">
+                                        <input type="file" id="avatarFileInput" name="avatar" accept="image/jpeg,image/png,image/webp" class="d-none">
+
+                                        <!-- Vùng kéo thả file -->
+                                        <div class="pr-avatar-dropzone mb-3" id="avatarDropzone" onclick="document.getElementById('avatarFileInput').click();">
+                                            <i class="ti ti-cloud-upload fs-1 text-primary mb-2 d-block"></i>
+                                            <div class="fw-bold text-dark mb-1">Nhấp để chọn ảnh hoặc kéo thả vào đây</div>
+                                            <div class="text-secondary small">Chấp nhận JPG, PNG hoặc WebP &bull; Dung lượng tối đa 2 MB</div>
+                                        </div>
+
+                                        <!-- Nút thao tác -->
+                                        <div class="d-flex flex-wrap gap-2 align-items-center">
+                                            <button type="button" class="btn btn-outline-primary" onclick="document.getElementById('avatarFileInput').click();">
+                                                <i class="ti ti-photo me-1"></i>Chọn ảnh từ máy
+                                            </button>
+                                            <button type="submit" class="btn btn-primary" id="saveAvatarBtn" disabled>
+                                                <i class="ti ti-check me-1"></i>Lưu ảnh đại diện
+                                            </button>
+                                            <button type="button" class="btn btn-ghost-secondary d-none" id="cancelAvatarBtn">
+                                                Hủy chọn
+                                            </button>
+                                        </div>
+                                    </form>
+
+                                    <!-- Nút xóa ảnh đại diện nếu đang có ảnh -->
+                                    <?php if ($hasAvatar): ?>
+                                        <hr class="my-4">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <div>
+                                                <div class="fw-semibold text-danger">Xóa ảnh đại diện</div>
+                                                <div class="text-secondary small">Gỡ ảnh hiện tại và quay về hiển thị chữ viết tắt của bạn.</div>
+                                            </div>
+                                            <form action="<?= $escape($baseUrl) ?>/profile" method="POST" id="form-delete-avatar" onsubmit="return confirm('Bạn có chắc chắn muốn xóa ảnh đại diện hiện tại?');" class="m-0">
+                                                <input type="hidden" name="_csrf" value="<?= $escape($csrfToken) ?>">
+                                                <input type="hidden" name="_action" value="delete_avatar">
+                                                <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                    <i class="ti ti-trash me-1"></i>Xóa ảnh
+                                                </button>
+                                            </form>
+                                        </div>
+                                    <?php endif; ?>
+
+                                </div>
+                            </div>
+
+                        </div>
+                    </div><!-- /tab-avatar -->
+
+                    <!-- ═══════════════════════════════════
+                         TAB 3 – Đổi mật khẩu
                     ═══════════════════════════════════════ -->
                     <div class="tab-pane fade <?= $activeTab === 'password' ? 'show active' : '' ?>"
                          id="tab-password" role="tabpanel" aria-labelledby="tab-btn-password">
@@ -499,21 +669,16 @@ $isActive = (int)($user['status'] ?? 1) === 1;
                                 </div>
                             <?php endif; ?>
 
-                            <!-- Hướng dẫn bảo mật -->
                             <div class="alert alert-info d-flex gap-2 mb-4" role="alert">
-                                <i class="ti ti-shield-lock fs-3 flex-shrink-0 text-info"></i>
-                                <div>
-                                    <div class="fw-semibold text-dark">Yêu cầu mật khẩu</div>
-                                    <ul class="mb-0 small mt-1 ps-3 text-secondary">
-                                        <li>Ít nhất <strong>6 ký tự</strong></li>
-                                        <li>Kết hợp chữ HOA, chữ thường, số và ký tự đặc biệt để tăng độ bảo mật</li>
-                                        <li>Không dùng lại mật khẩu cũ</li>
-                                    </ul>
+                                <i class="ti ti-info-circle fs-3 flex-shrink-0"></i>
+                                <div class="small">
+                                    Mật khẩu mới phải có <strong>ít nhất 6 ký tự</strong>. Nên kết hợp
+                                    chữ hoa, chữ thường, số và ký tự đặc biệt để tài khoản được bảo vệ tốt nhất.
                                 </div>
                             </div>
 
                             <form method="POST" action="<?= $escape($baseUrl) ?>/profile"
-                                  autocomplete="off" novalidate id="form-change-password">
+                                  id="form-change-password" autocomplete="off" novalidate>
                                 <input type="hidden" name="_csrf"   value="<?= $escape($csrfToken) ?>">
                                 <input type="hidden" name="_action" value="change_password">
 
@@ -521,21 +686,22 @@ $isActive = (int)($user['status'] ?? 1) === 1;
 
                                     <!-- Mật khẩu hiện tại -->
                                     <div class="col-12">
-                                        <label class="form-label required" for="current_password">
-                                            Mật khẩu hiện tại
-                                        </label>
+                                        <label class="form-label required" for="current_password">Mật khẩu hiện tại</label>
                                         <div class="input-group">
-                                            <span class="input-group-text"><i class="ti ti-lock"></i></span>
+                                            <span class="input-group-text">
+                                                <i class="ti ti-key"></i>
+                                            </span>
                                             <input type="password"
                                                    class="form-control"
                                                    id="current_password" name="current_password"
                                                    autocomplete="current-password"
                                                    placeholder="Nhập mật khẩu hiện tại"
                                                    required>
-                                            <button class="btn btn-outline-secondary toggle-pw"
+                                            <button class="btn btn-outline-secondary btn-icon"
                                                     type="button"
-                                                    data-target="current_password"
-                                                    aria-label="Hiện / ẩn mật khẩu">
+                                                    data-toggle-target="current_password"
+                                                    aria-label="Ẩn / Hiện mật khẩu"
+                                                    title="Ẩn / Hiện mật khẩu">
                                                 <i class="ti ti-eye"></i>
                                             </button>
                                         </div>
@@ -543,108 +709,208 @@ $isActive = (int)($user['status'] ?? 1) === 1;
 
                                     <!-- Mật khẩu mới -->
                                     <div class="col-md-6">
-                                        <label class="form-label required" for="new_password">
-                                            Mật khẩu mới
-                                        </label>
+                                        <label class="form-label required" for="new_password">Mật khẩu mới</label>
                                         <div class="input-group">
-                                            <span class="input-group-text"><i class="ti ti-key"></i></span>
+                                            <span class="input-group-text">
+                                                <i class="ti ti-lock"></i>
+                                            </span>
                                             <input type="password"
                                                    class="form-control"
                                                    id="new_password" name="new_password"
+                                                   minlength="6"
                                                    autocomplete="new-password"
-                                                   minlength="6" maxlength="72"
                                                    placeholder="Tối thiểu 6 ký tự"
                                                    required>
-                                            <button class="btn btn-outline-secondary toggle-pw"
+                                            <button class="btn btn-outline-secondary btn-icon"
                                                     type="button"
-                                                    data-target="new_password"
-                                                    aria-label="Hiện / ẩn mật khẩu">
+                                                    data-toggle-target="new_password"
+                                                    aria-label="Ẩn / Hiện mật khẩu"
+                                                    title="Ẩn / Hiện mật khẩu">
                                                 <i class="ti ti-eye"></i>
                                             </button>
                                         </div>
-                                        <!-- Strength bar -->
-                                        <div id="pw-strength-wrap" style="display:none" class="mt-2">
-                                            <div class="pr-strength">
-                                                <div class="pr-strength-fill" id="pw-strength-fill"></div>
-                                            </div>
-                                            <div class="form-hint mt-1" id="pw-strength-label"></div>
+                                        <!-- Thanh đo độ mạnh mật khẩu -->
+                                        <div class="pr-strength" id="pw-strength-wrap" style="display:none;">
+                                            <div class="pr-strength-fill" id="pw-strength-fill" style="width:0%;"></div>
                                         </div>
+                                        <div class="form-hint" id="pw-strength-label"></div>
                                     </div>
 
                                     <!-- Xác nhận mật khẩu mới -->
                                     <div class="col-md-6">
-                                        <label class="form-label required" for="new_password_confirm">
-                                            Xác nhận mật khẩu mới
-                                        </label>
+                                        <label class="form-label required" for="new_password_confirm">Xác nhận mật khẩu mới</label>
                                         <div class="input-group">
-                                            <span class="input-group-text"><i class="ti ti-key"></i></span>
+                                            <span class="input-group-text">
+                                                <i class="ti ti-lock-check"></i>
+                                            </span>
                                             <input type="password"
                                                    class="form-control"
                                                    id="new_password_confirm" name="new_password_confirm"
+                                                   minlength="6"
                                                    autocomplete="new-password"
                                                    placeholder="Nhập lại mật khẩu mới"
                                                    required>
-                                            <button class="btn btn-outline-secondary toggle-pw"
+                                            <button class="btn btn-outline-secondary btn-icon"
                                                     type="button"
-                                                    data-target="new_password_confirm"
-                                                    aria-label="Hiện / ẩn mật khẩu">
+                                                    data-toggle-target="new_password_confirm"
+                                                    aria-label="Ẩn / Hiện mật khẩu"
+                                                    title="Ẩn / Hiện mật khẩu">
                                                 <i class="ti ti-eye"></i>
                                             </button>
                                         </div>
-                                        <div class="form-hint mt-1" id="pw-match-hint"></div>
+                                        <div class="form-hint" id="pw-match-hint"></div>
                                     </div>
 
-                                </div><!-- /row -->
+                                </div><!-- /row g-3 -->
 
-                                <div class="d-flex justify-content-end gap-2 mt-4">
-                                    <button type="reset" class="btn btn-ghost-secondary">
-                                        <i class="ti ti-x me-1"></i>Hủy
-                                    </button>
+                                <div class="mt-4 pt-3 border-top d-flex gap-2 justify-content-end">
                                     <button type="submit" class="btn btn-primary px-4">
                                         <i class="ti ti-lock-check me-1"></i>Cập nhật mật khẩu
                                     </button>
                                 </div>
 
                             </form>
-                        </div><!-- /card-body -->
-                    </div><!-- /tab-pane password -->
+                        </div>
+                    </div><!-- /tab-password -->
 
                 </div><!-- /tab-content -->
-            </div><!-- /card right -->
+            </div><!-- /card -->
         </div><!-- /col-right -->
 
-    </div><!-- /row -->
-</div><!-- /container-xl -->
+    </div><!-- /row g-4 -->
+</div><!-- /container -->
 
 <script>
 (function () {
     'use strict';
 
-    /* ── Toggle hiện / ẩn mật khẩu ─────────────────────────── */
-    document.querySelectorAll('.toggle-pw').forEach(function (btn) {
+    /* ── Ẩn / Hiện mật khẩu ──────────────────────────────────── */
+    document.querySelectorAll('[data-toggle-target]').forEach(function (btn) {
         btn.addEventListener('click', function () {
-            var input = document.getElementById(btn.dataset.target);
-            var icon  = btn.querySelector('i');
+            var targetId = this.getAttribute('data-toggle-target');
+            var input    = document.getElementById(targetId);
+            var icon     = this.querySelector('.ti');
             if (!input) return;
-            var isHidden = input.type === 'password';
-            input.type   = isHidden ? 'text' : 'password';
-            icon.classList.toggle('ti-eye',     !isHidden);
-            icon.classList.toggle('ti-eye-off',  isHidden);
+
+            if (input.type === 'password') {
+                input.type = 'text';
+                if (icon) { icon.classList.remove('ti-eye'); icon.classList.add('ti-eye-off'); }
+            } else {
+                input.type = 'password';
+                if (icon) { icon.classList.remove('ti-eye-off'); icon.classList.add('ti-eye'); }
+            }
         });
     });
 
-    /* ── Strength meter ─────────────────────────────────────── */
+    /* ── Xử lý Live Preview & Drag and Drop Ảnh đại diện ────── */
+    var fileInput          = document.getElementById('avatarFileInput');
+    var dropzone           = document.getElementById('avatarDropzone');
+    var previewImg         = document.getElementById('avatarPreviewImg');
+    var previewPlaceholder = document.getElementById('avatarPreviewPlaceholder');
+    var saveAvatarBtn      = document.getElementById('saveAvatarBtn');
+    var cancelAvatarBtn    = document.getElementById('cancelAvatarBtn');
+    var fileInfoBadge      = document.getElementById('fileInfoBadge');
+    var fileInfoText       = document.getElementById('fileInfoText');
+
+    function handleSelectedFile(file) {
+        if (!file) return;
+
+        var allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+        if (allowedTypes.indexOf(file.type) === -1) {
+            alert('Định dạng tệp không hợp lệ. Vui lòng chỉ chọn ảnh JPG, PNG hoặc WebP.');
+            if (fileInput) fileInput.value = '';
+            return;
+        }
+
+        if (file.size > 2 * 1024 * 1024) {
+            alert('Dung lượng tệp vượt quá 2 MB (' + (file.size / 1024 / 1024).toFixed(2) + ' MB). Vui lòng chọn ảnh nhỏ hơn 2 MB.');
+            if (fileInput) fileInput.value = '';
+            return;
+        }
+
+        var reader = new FileReader();
+        reader.onload = function (e) {
+            if (previewPlaceholder) previewPlaceholder.classList.add('d-none');
+            if (previewImg) {
+                previewImg.src = e.target.result;
+                previewImg.classList.remove('d-none');
+            }
+            if (saveAvatarBtn) saveAvatarBtn.removeAttribute('disabled');
+            if (cancelAvatarBtn) cancelAvatarBtn.classList.remove('d-none');
+            if (fileInfoBadge && fileInfoText) {
+                fileInfoText.textContent = file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
+                fileInfoBadge.classList.remove('d-none');
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+
+    if (fileInput) {
+        fileInput.addEventListener('change', function () {
+            if (fileInput.files && fileInput.files[0]) {
+                handleSelectedFile(fileInput.files[0]);
+            }
+        });
+    }
+
+    if (cancelAvatarBtn) {
+        cancelAvatarBtn.addEventListener('click', function () {
+            if (fileInput) fileInput.value = '';
+            if (fileInfoBadge) fileInfoBadge.classList.add('d-none');
+            if (saveAvatarBtn) saveAvatarBtn.setAttribute('disabled', 'disabled');
+            cancelAvatarBtn.classList.add('d-none');
+
+            <?php if ($hasAvatar): ?>
+                if (previewImg) {
+                    previewImg.src = '<?= $escape($avatarUrl) ?>';
+                    previewImg.classList.remove('d-none');
+                }
+                if (previewPlaceholder) previewPlaceholder.classList.add('d-none');
+            <?php else: ?>
+                if (previewImg) previewImg.classList.add('d-none');
+                if (previewPlaceholder) previewPlaceholder.classList.remove('d-none');
+            <?php endif; ?>
+        });
+    }
+
+    if (dropzone) {
+        ['dragenter', 'dragover'].forEach(function (eventName) {
+            dropzone.addEventListener(eventName, function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.add('dragover');
+            });
+        });
+
+        ['dragleave', 'drop'].forEach(function (eventName) {
+            dropzone.addEventListener(eventName, function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.remove('dragover');
+            });
+        });
+
+        dropzone.addEventListener('drop', function (e) {
+            var dt = e.dataTransfer;
+            if (dt && dt.files && dt.files.length) {
+                if (fileInput) fileInput.files = dt.files;
+                handleSelectedFile(dt.files[0]);
+            }
+        });
+    }
+
+    /* ── Đo độ mạnh mật khẩu ─────────────────────────────────── */
     var newPwInput    = document.getElementById('new_password');
     var strengthWrap  = document.getElementById('pw-strength-wrap');
     var strengthFill  = document.getElementById('pw-strength-fill');
     var strengthLabel = document.getElementById('pw-strength-label');
 
     var levels = [
-        { pct:  20, color: '#ef4444', label: 'Rất yếu'   },
-        { pct:  40, color: '#f97316', label: 'Yếu'        },
-        { pct:  60, color: '#eab308', label: 'Trung bình' },
-        { pct:  80, color: '#06b6d4', label: 'Mạnh'       },
-        { pct: 100, color: '#22c55e', label: 'Rất mạnh'   },
+        { label: 'Rất yếu', color: 'var(--tblr-danger)',  pct: 20 },
+        { label: 'Yếu',     color: 'var(--tblr-warning)', pct: 40 },
+        { label: 'Trung bình', color: 'var(--tblr-yellow)', pct: 60 },
+        { label: 'Khá',     color: 'var(--tblr-info)',    pct: 80 },
+        { label: 'Mạnh',    color: 'var(--tblr-success)', pct: 100 },
     ];
 
     function calcScore(pw) {

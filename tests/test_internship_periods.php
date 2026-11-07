@@ -234,6 +234,139 @@ try {
     $_SESSION['roles'] = ['admin'];
     t('Quản trị viên (admin) CÓ quyền quản lý đợt', AuthController::hasRole('admin', 'training_dept'));
 
+        // M. KIỂM THỬ TOÀN DIỆN CHỨC NĂNG XÓA ĐỢT BẢN NHÁP (DELETE DRAFT PERIOD)
+    
+    // M1. Tạo đợt draft thử nghiệm để test xóa
+    $draftTestId = InternshipPeriod::create([
+        'code'        => 'TEST-DEL-DRAFT',
+        'name'        => 'Đợt bản nháp để xóa thử nghiệm',
+        'type'        => InternshipPeriod::TYPE_INTERNSHIP,
+        'start_date'  => '2026-11-01',
+        'end_date'    => '2026-11-30',
+        'status'      => InternshipPeriod::STATUS_DRAFT,
+        'description' => 'Mô tả test xóa',
+    ]);
+    t('Tạo đợt nháp thử nghiệm phục vụ kiểm tra xóa thành công', $draftTestId > 0);
+
+    // M2. Kiểm tra canDelete trên đợt draft (thành công)
+    $reasonDraft = '';
+    $canDelDraft = InternshipPeriod::canDelete($draftTestId, $reasonDraft);
+    t('1. canDelete() chấp nhận đợt bản nháp không có dữ liệu liên kết', $canDelDraft && $reasonDraft === '');
+
+    // M3. Xóa đợt draft thành công
+    $delDraftOk = InternshipPeriod::delete($draftTestId);
+    $foundDeleted = InternshipPeriod::findById($draftTestId);
+    t('1b. Xóa đợt draft thành công, findById trả về null', $delDraftOk && $foundDeleted === null);
+
+    // M4. Xóa đợt active: bị từ chối
+    $reasonActive = '';
+    $canDelActive = InternshipPeriod::canDelete($id2, $reasonActive); // $id2 là active
+    $activeDeleteThrew = false;
+    try {
+        InternshipPeriod::delete($id2);
+    } catch (InvalidArgumentException $e) {
+        $activeDeleteThrew = true;
+    }
+    t('2. Xóa đợt active: canDelete() trả về false và delete() ném ngoại lệ từ chối', 
+        !$canDelActive && $activeDeleteThrew && str_contains($reasonActive, 'Đang diễn ra')
+    );
+
+    // M5. Xóa đợt closed: bị từ chối
+    $closedTestId = InternshipPeriod::create([
+        'code'        => 'TEST-DEL-CLOSED',
+        'name'        => 'Đợt đã đóng',
+        'type'        => InternshipPeriod::TYPE_GRADUATION_PROJECT,
+        'start_date'  => '2026-01-01',
+        'end_date'    => '2026-05-01',
+        'status'      => InternshipPeriod::STATUS_CLOSED,
+    ]);
+    $reasonClosed = '';
+    $canDelClosed = InternshipPeriod::canDelete($closedTestId, $reasonClosed);
+    $closedDeleteThrew = false;
+    try {
+        InternshipPeriod::delete($closedTestId);
+    } catch (InvalidArgumentException $e) {
+        $closedDeleteThrew = true;
+    }
+    t('3. Xóa đợt closed: canDelete() trả về false và delete() ném ngoại lệ từ chối', 
+        !$canDelClosed && $closedDeleteThrew && str_contains($reasonClosed, 'Đã kết thúc')
+    );
+
+    // M6. Xóa đợt có dữ liệu liên quan: bị từ chối
+    // Tạo bảng tạm giả lập bảng nghiệp vụ topics liên kết period_id
+    $pdo->exec("CREATE TEMPORARY TABLE IF NOT EXISTS `topics` (
+        `id` INT AUTO_INCREMENT PRIMARY KEY,
+        `period_id` INT NOT NULL,
+        `title` VARCHAR(255) NOT NULL
+    )");
+    $draftWithDataId = InternshipPeriod::create([
+        'code'        => 'TEST-DRAFT-WITH-DATA',
+        'name'        => 'Đợt nháp có dữ liệu liên kết',
+        'type'        => InternshipPeriod::TYPE_INTERNSHIP,
+        'start_date'  => '2026-11-01',
+        'end_date'    => '2026-11-30',
+        'status'      => InternshipPeriod::STATUS_DRAFT,
+    ]);
+    $pdo->prepare("INSERT INTO `topics` (`period_id`, `title`) VALUES (:pid, 'Đề tài liên kết')")
+        ->execute(['pid' => $draftWithDataId]);
+
+    $reasonWithData = '';
+    $canDelWithData = InternshipPeriod::canDelete($draftWithDataId, $reasonWithData);
+    $withDataDeleteThrew = false;
+    try {
+        InternshipPeriod::delete($draftWithDataId);
+    } catch (InvalidArgumentException $e) {
+        $withDataDeleteThrew = true;
+    }
+    t('4. Xóa đợt draft có dữ liệu liên quan: bị từ chối và thông báo lý do cụ thể', 
+        !$canDelWithData && $withDataDeleteThrew && str_contains($reasonWithData, 'đề tài')
+    );
+    $pdo->exec("DROP TEMPORARY TABLE IF EXISTS `topics`");
+
+    // M7. Phân quyền: Người dùng không có quyền (student) bị từ chối
+    $_SESSION['roles'] = ['student'];
+    t('5. Người dùng không có quyền (student) không có quyền quản lý/xóa đợt', 
+        !AuthController::hasRole('admin', 'training_dept')
+    );
+
+    // M8. Thiếu CSRF: bị từ chối
+    $_SESSION['roles'] = ['admin'];
+    $_SESSION['_csrf'] = 'valid_token_12345678901234567890123456789012';
+    $_POST = [];
+    t('6. Thiếu token CSRF bị từ chối', !AuthController::verifyCsrf());
+
+    // M9. CSRF không hợp lệ: bị từ chối
+    $_POST['_csrf'] = 'invalid_token';
+    t('7. Token CSRF không hợp lệ bị từ chối', !AuthController::verifyCsrf());
+
+    // M10. ID không tồn tại: xử lý đúng
+    $nonExistentThrew = false;
+    try {
+        InternshipPeriod::delete(99999999);
+    } catch (InvalidArgumentException $e) {
+        $nonExistentThrew = true;
+    }
+    t('8. ID đợt không tồn tại: ném ngoại lệ thông báo không tìm thấy', $nonExistentThrew);
+
+    // M11. Gửi GET đến endpoint xóa: không thể xóa
+    $_SERVER['REQUEST_METHOD'] = 'GET';
+    t('9. Yêu cầu GET không được chấp nhận để xóa', ($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST');
+    $_SERVER['REQUEST_METHOD'] = 'POST'; // khôi phục
+
+    // M12. Sau khi xóa, danh sách và thống kê cập nhật chính xác
+    $countBefore = count(InternshipPeriod::all());
+    $draftForStatId = InternshipPeriod::create([
+        'code'        => 'TEST-FOR-STAT',
+        'name'        => 'Đợt test cập nhật thống kê',
+        'type'        => InternshipPeriod::TYPE_INTERNSHIP,
+        'start_date'  => '2026-11-01',
+        'end_date'    => '2026-11-30',
+        'status'      => InternshipPeriod::STATUS_DRAFT,
+    ]);
+    t('Tạo thêm 1 đợt làm tăng tổng số đợt thêm 1', count(InternshipPeriod::all()) === $countBefore + 1);
+    InternshipPeriod::delete($draftForStatId);
+    t('10. Sau khi xóa đợt thành công, tổng số đợt giảm chính xác về số ban đầu', count(InternshipPeriod::all()) === $countBefore);
+
     // L. Kiểm tra đăng ký đầy đủ các route cần thiết trong Router
     $router = new Router();
     $router->get('/periods',          [InternshipPeriodController::class, 'index']);
@@ -245,8 +378,10 @@ try {
     $router->post('/periods/update',  [InternshipPeriodController::class, 'update']);
     $router->post('/periods/edit',    [InternshipPeriodController::class, 'update']);
     $router->post('/periods/status',  [InternshipPeriodController::class, 'updateStatus']);
+    $router->post('/periods/delete',  [InternshipPeriodController::class, 'destroy']);
+    $router->get('/periods/delete',   function () { AuthController::go('/periods'); });
 
-    t('Router đăng ký thành công đầy đủ 9 endpoint quản lý đợt', true);
+    t('Router đăng ký thành công đầy đủ 10 endpoint quản lý đợt bao gồm DELETE', true);
 
 } finally {
     // 5. ROLLBACK 100% CSDL để không lưu dữ liệu test

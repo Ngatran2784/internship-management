@@ -1,0 +1,40 @@
+# ==============================================================================
+# BẢO MẬT THƯ MỤC UPLOADS
+# Không cho phép thực thi bất kỳ mã PHP hoặc script máy chủ nào
+# ==============================================================================
+
+# 1. Chặn thực thi và tải về các file mã nguồn/script
+<FilesMatch "\.(php|phtml|php3|php4|php5|php7|php8|phps|phar|pl|py|cgi|sh|bash|exe|bat|cmd)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order Deny,Allow
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# 2. Vô hiệu hóa engine PHP (phòng chống trường hợp cấu hình máy chủ lỏng lẻo)
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php8.c>
+    php_flag engine off
+</IfModule>
+
+# 3. Tắt thực thi CGI và cấm liệt kê thư mục (Directory Browsing)
+Options -ExecCGI -Indexes
+
+# 4. Chỉ cấp phép truy cập các định dạng ảnh tĩnh an toàn
+<FilesMatch "\.(jpg|jpeg|png|webp|gif|ico)$">
+    <IfModule mod_authz_core.c>
+        Require all granted
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order Allow,Deny
+        Allow from all
+    </IfModule>
+</FilesMatch>

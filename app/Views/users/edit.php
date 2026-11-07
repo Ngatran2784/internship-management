@@ -26,7 +26,7 @@ if (!empty($old['role_ids']) && is_array($old['role_ids'])) {
 }
 
 $roleBadgeColor = [
-    'admin'           => 'bg-red-lt text-red',
+    'admin'           => 'bg-primary-lt text-primary',
     'training_dept'   => 'bg-purple-lt text-purple',
     'department_head' => 'bg-orange-lt text-orange',
     'lecturer'        => 'bg-blue-lt text-blue',

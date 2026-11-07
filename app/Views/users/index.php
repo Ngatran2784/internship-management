@@ -22,7 +22,7 @@ $roleLabels = [
     'enterprise'      => 'Doanh nghiệp',
 ];
 $roleBadgeColor = [
-    'admin'           => 'bg-red-lt text-red',
+    'admin'           => 'bg-primary-lt text-primary',
     'training_dept'   => 'bg-purple-lt text-purple',
     'department_head' => 'bg-orange-lt text-orange',
     'lecturer'        => 'bg-blue-lt text-blue',
@@ -102,7 +102,7 @@ $totalLocked   = count($allUsers) - $totalActive;
                 <div class="card-body">
                     <div class="row align-items-center">
                         <div class="col-auto">
-                            <span class="avatar bg-red-lt text-red">
+                            <span class="avatar bg-danger-lt text-danger">
                                 <i class="ti ti-user-off fs-2"></i>
                             </span>
                         </div>

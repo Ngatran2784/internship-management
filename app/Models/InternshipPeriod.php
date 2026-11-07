@@ -348,4 +348,177 @@ class InternshipPeriod
         // Đảm bảo không bị parse tràn ngày (ví dụ 2026-02-31 thành 2026-03-03)
         return $d->format('Y-m-d') === $dateStr ? $d : null;
     }
+
+    /**
+     * Kiểm tra điều kiện có thể xóa đợt hay không theo quy tắc nghiệp vụ nghiêm ngặt
+     *
+     * Quy tắc:
+     * 1. Đợt phải tồn tại.
+     * 2. Chỉ cho phép xóa khi trạng thái là 'draft' (Bản nháp). Không cho phép xóa đợt 'active' hoặc 'closed'.
+     * 3. Không có bất kỳ dữ liệu nghiệp vụ liên quan nào (đề tài, đăng ký sinh viên, phân công giảng viên, báo cáo, chấm điểm).
+     * 4. Kiểm tra cả khóa ngoại trong information_schema và các bảng nghiệp vụ có khả năng liên kết.
+     *
+     * @param int $id ID của đợt cần kiểm tra
+     * @param string &$reason Lý do từ chối xóa nếu không thỏa mãn điều kiện
+     * @param \PDO|null $pdo Kết nối PDO (nếu đang chạy trong transaction)
+     * @return bool True nếu đủ điều kiện xóa, False nếu không
+     */
+    public static function canDelete(int $id, string &$reason = '', ?\PDO $pdo = null): bool
+    {
+        $pdo = $pdo ?? Database::getConnection();
+
+        // 1. Kiểm tra tồn tại
+        $stmt = $pdo->prepare('SELECT * FROM `internship_periods` WHERE `id` = :id LIMIT 1');
+        $stmt->execute(['id' => $id]);
+        $period = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+        if ($period === false || $period === null) {
+            $reason = 'Đợt thực tập/đồ án không tồn tại hoặc đã bị xóa trước đó.';
+            return false;
+        }
+
+        // 2. Ràng buộc trạng thái: Chỉ cho phép xóa khi là draft (Bản nháp)
+        if ($period['status'] !== self::STATUS_DRAFT) {
+            $statusName = self::STATUS_LABELS[$period['status']] ?? $period['status'];
+            $reason = "Không thể xóa đợt đang ở trạng thái '{$statusName}'. Hệ thống chỉ cho phép xóa các đợt ở trạng thái 'Bản nháp'.";
+            return false;
+        }
+
+        // 3. Quét kiểm tra các khóa ngoại thực tế trong information_schema
+        try {
+            $fkSql = "SELECT TABLE_NAME, COLUMN_NAME
+                        FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+                       WHERE REFERENCED_TABLE_SCHEMA = DATABASE()
+                         AND REFERENCED_TABLE_NAME = 'internship_periods'
+                         AND REFERENCED_COLUMN_NAME = 'id'";
+            $fkStmt = $pdo->query($fkSql);
+            if ($fkStmt) {
+                $fks = $fkStmt->fetchAll(\PDO::FETCH_ASSOC);
+                $tableLabels = [
+                    'topics'                => 'đề tài đồ án/thực tập',
+                    'topic_registrations'   => 'sinh viên đăng ký đề tài',
+                    'student_registrations' => 'sinh viên đăng ký đợt',
+                    'period_students'       => 'danh sách sinh viên tham gia đợt',
+                    'lecturer_assignments'  => 'giảng viên phân công hướng dẫn',
+                    'progress_reports'      => 'báo cáo tiến độ',
+                    'evaluations'           => 'đánh giá và kết quả chấm điểm',
+                    'milestones'            => 'kế hoạch mốc thời gian',
+                ];
+                foreach ($fks as $fk) {
+                    $tbl = $fk['TABLE_NAME'];
+                    $col = $fk['COLUMN_NAME'];
+                    $checkFkStmt = $pdo->prepare("SELECT COUNT(*) FROM `{$tbl}` WHERE `{$col}` = :id");
+                    $checkFkStmt->execute(['id' => $id]);
+                    if ((int)$checkFkStmt->fetchColumn() > 0) {
+                        $label = $tableLabels[$tbl] ?? "trong bảng '{$tbl}'";
+                        $reason = "Không thể xóa đợt vì đã có dữ liệu {$label} liên kết.";
+                        return false;
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            error_log("InternshipPeriod::canDelete FK check error: " . $e->getMessage());
+        }
+
+        // 4. Quét kiểm tra các bảng nghiệp vụ có khả năng liên kết trong tương lai/các sprint
+        $potentialTables = [
+            'topics'                => 'đề tài đồ án/thực tập',
+            'topic_registrations'   => 'sinh viên đăng ký đề tài',
+            'student_registrations' => 'sinh viên đăng ký đợt',
+            'period_students'       => 'danh sách sinh viên tham gia đợt',
+            'lecturer_assignments'  => 'giảng viên phân công hướng dẫn',
+            'progress_reports'      => 'báo cáo tiến độ',
+            'evaluations'           => 'đánh giá và kết quả chấm điểm',
+            'milestones'            => 'kế hoạch mốc thời gian',
+        ];
+
+        foreach ($potentialTables as $table => $label) {
+            try {
+                // Kiểm tra xem bảng có tồn tại hay không (hỗ trợ cả bảng thường và bảng test)
+                $testStmt = $pdo->query("SELECT 1 FROM `{$table}` LIMIT 1");
+                if ($testStmt !== false) {
+                    try {
+                        $checkStmt = $pdo->prepare("SELECT COUNT(*) FROM `{$table}` WHERE `period_id` = :id");
+                        $checkStmt->execute(['id' => $id]);
+                        if ((int)$checkStmt->fetchColumn() > 0) {
+                            $reason = "Không thể xóa đợt vì đã có dữ liệu {$label} liên kết.";
+                            return false;
+                        }
+                    } catch (\Throwable $eCol1) {
+                        try {
+                            $checkStmt2 = $pdo->prepare("SELECT COUNT(*) FROM `{$table}` WHERE `internship_period_id` = :id");
+                            $checkStmt2->execute(['id' => $id]);
+                            if ((int)$checkStmt2->fetchColumn() > 0) {
+                                $reason = "Không thể xóa đợt vì đã có dữ liệu {$label} liên kết.";
+                                return false;
+                            }
+                        } catch (\Throwable $eCol2) {
+                            // Bảng không có cột liên kết period
+                        }
+                    }
+                }
+            } catch (\Throwable $eTbl) {
+                // Bảng không tồn tại trong CSDL, bỏ qua
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Xóa an toàn đợt thực tập/đồ án bản nháp
+     *
+     * Thực hiện kiểm tra và xóa trong Transaction kèm FOR UPDATE để tránh xung đột dữ liệu.
+     *
+     * @param int $id ID đợt cần xóa
+     * @return bool
+     * @throws \InvalidArgumentException khi không đủ điều kiện xóa hoặc xóa thất bại
+     */
+    public static function delete(int $id): bool
+    {
+        $pdo = Database::getConnection();
+        $isExistingTransaction = $pdo->inTransaction();
+
+        if (!$isExistingTransaction) {
+            $pdo->beginTransaction();
+        }
+
+        try {
+            // Khóa dòng với FOR UPDATE để ngăn ngừa thay đổi trạng thái đồng thời
+            $lockStmt = $pdo->prepare('SELECT * FROM `internship_periods` WHERE `id` = :id FOR UPDATE');
+            $lockStmt->execute(['id' => $id]);
+            $lockedPeriod = $lockStmt->fetch(\PDO::FETCH_ASSOC);
+
+            if ($lockedPeriod === false || $lockedPeriod === null) {
+                throw new \InvalidArgumentException('Đợt thực tập/đồ án không tồn tại hoặc đã bị xóa trước đó.');
+            }
+
+            $reason = '';
+            if (!self::canDelete($id, $reason, $pdo)) {
+                throw new \InvalidArgumentException($reason !== '' ? $reason : 'Không đủ điều kiện xóa đợt này.');
+            }
+
+            // Thực thi xóa chính xác bản ghi ở trạng thái draft bằng Prepared Statements
+            $deleteStmt = $pdo->prepare('DELETE FROM `internship_periods` WHERE `id` = :id AND `status` = :status');
+            $success = $deleteStmt->execute([
+                'id'     => $id,
+                'status' => self::STATUS_DRAFT,
+            ]);
+
+            if (!$success || $deleteStmt->rowCount() === 0) {
+                throw new \InvalidArgumentException('Không thể xóa đợt thực tập/đồ án. Vui lòng kiểm tra lại trạng thái.');
+            }
+
+            if (!$isExistingTransaction) {
+                $pdo->commit();
+            }
+
+            return true;
+        } catch (\Throwable $e) {
+            if (!$isExistingTransaction && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+    }
 }

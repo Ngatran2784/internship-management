@@ -22,6 +22,23 @@ if (class_exists(\App\Controllers\AuthController::class)) {
 
 $currentFullName = $_SESSION['full_name'] ?? ($_SESSION['username'] ?? 'Người dùng');
 $currentRoles = $_SESSION['roles'] ?? [];
+$currentUserAvatar = $_SESSION['avatar_path'] ?? ($_SESSION['avatar'] ?? null);
+if ($currentUserAvatar === null && !empty($_SESSION['user_id']) && class_exists(\App\Models\User::class)) {
+    $sessionUser = \App\Models\User::findById((int)$_SESSION['user_id']);
+    if ($sessionUser) {
+        $currentUserAvatar = $sessionUser['avatar_path'] ?? $sessionUser['avatar'] ?? null;
+        $_SESSION['avatar_path'] = $currentUserAvatar;
+    }
+}
+$headerWords = preg_split('/\s+/u', trim($currentFullName), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+$headerInitials = '';
+if (count($headerWords) >= 2) {
+    $headerInitials = mb_strtoupper(mb_substr($headerWords[0], 0, 1) . mb_substr(end($headerWords), 0, 1));
+} elseif (count($headerWords) === 1) {
+    $headerInitials = mb_strtoupper(mb_substr($headerWords[0], 0, 2));
+} else {
+    $headerInitials = 'U';
+}
 $roleLabels = [
     'admin'           => 'Quản trị viên',
     'training_dept'   => 'Phòng đào tạo',
@@ -33,6 +50,7 @@ $roleLabels = [
 $displayRole = !empty($currentRoles) ? ($roleLabels[$currentRoles[0]] ?? $currentRoles[0]) : 'Thành viên';
 $isAdmin = in_array('admin', $currentRoles, true);
 $isStudent = in_array('student', $currentRoles, true);
+$canManagePeriods = $isAdmin || in_array('training_dept', $currentRoles, true);
 ?>
 <!doctype html>
 <html lang="vi">
@@ -41,6 +59,8 @@ $isStudent = in_array('student', $currentRoles, true);
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="description" content="Hệ thống quản lý thực tập và đồ án sinh viên">
     <title><?= $escape($pageTitle) ?></title>
+    <link rel="icon" type="image/x-icon" href="<?= $escape($baseUrl) ?>/favicon.ico">
+    <link rel="shortcut icon" type="image/png" href="<?= $escape($baseUrl) ?>/assets/images/vinhuni-logo.png">
     <link href="<?= $escape($baseUrl) ?>/assets/tabler/css/tabler.min.css" rel="stylesheet">
     <link href="<?= $escape($baseUrl) ?>/assets/tabler/css/tabler-icons.min.css" rel="stylesheet">
     <style>
@@ -57,13 +77,6 @@ $isStudent = in_array('student', $currentRoles, true);
         .app-sidebar .navbar-nav { overflow-x: hidden; }
         .app-sidebar .nav-link { white-space: nowrap; padding: 0.5rem 0.875rem; text-overflow: ellipsis; overflow: hidden; }
         .app-sidebar .nav-link-title { font-size: .875rem; font-weight: 500; line-height: 1.35; white-space: nowrap; }
-        .app-sidebar .nav-link.disabled { color: rgba(255, 255, 255, .72); opacity: 1; cursor: not-allowed; }
-        .app-sidebar .nav-link.active {
-            color: #fff;
-            background: rgba(255, 255, 255, .12);
-            box-shadow: inset 3px 0 0 #79c0ff;
-        }
-        .app-sidebar .nav-link.active .nav-link-icon { color: #9bd0ff; }
         .app-sidebar .sidebar-group-toggle {
             width: 100%;
             display: flex;
@@ -109,6 +122,7 @@ $isStudent = in_array('student', $currentRoles, true);
             .navbar-vertical.navbar-expand-lg.app-sidebar ~ .app-page-wrapper { margin-left: 16rem; }
         }
     </style>
+    <link href="<?= $escape($baseUrl) ?>/assets/css/vinhuni-theme.css" rel="stylesheet">
 </head>
 <body>
 <div class="page">
@@ -145,9 +159,13 @@ $isStudent = in_array('student', $currentRoles, true);
                     <div class="nav-item dropdown">
                     <?php if ($isLoggedIn): ?>
                         <a href="#" class="nav-link d-flex lh-1 text-reset p-0" data-bs-toggle="dropdown" aria-label="Tài khoản">
-                            <span class="avatar avatar-sm bg-primary-lt">
-                                <i class="ti ti-user fs-2"></i>
+                            <?php if (!empty($currentUserAvatar)): ?>
+                            <span class="avatar avatar-sm rounded-circle" style="background-image: url('<?= $escape($baseUrl . '/' . ltrim($currentUserAvatar, '/')) ?>'); background-size: cover; background-position: center;"></span>
+                        <?php else: ?>
+                            <span class="avatar avatar-sm rounded-circle bg-primary-lt text-primary fw-bold">
+                                <?= $escape($headerInitials) ?>
                             </span>
+                        <?php endif; ?>
                             <span class="d-none d-sm-block ps-2 text-start">
                                 <span class="fw-medium d-block"><?= $escape($currentFullName) ?></span>
                                 <span class="small text-secondary"><?= $escape($displayRole) ?></span>
@@ -200,11 +218,11 @@ $isStudent = in_array('student', $currentRoles, true);
                         <div class="page-pretitle text-secondary"><?= $escape($pageDescription) ?></div>
                         <h1 class="page-title"><?= $escape($pageHeading) ?></h1>
                     </div>
-                    <?php if ($activePage === 'dashboard'): ?>
+                    <?php if ($activePage === 'dashboard' && !empty($canManagePeriods)): ?>
                         <div class="col-12 col-sm-auto ms-sm-auto text-sm-end d-print-none">
-                            <button type="button" class="btn btn-primary" disabled title="Chức năng đang được phát triển">
+                            <a href="<?= $escape($baseUrl) ?>/periods/create" class="btn btn-primary">
                                 <i class="ti ti-plus me-1"></i>Tạo đợt thực tập / đồ án mới
-                            </button>
+                            </a>
                         </div>
                     <?php endif; ?>
                 </div>

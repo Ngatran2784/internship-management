@@ -29,6 +29,8 @@ use App\Core\Database;
 use App\Controllers\AuthController;
 use App\Controllers\UserController;
 use App\Controllers\InternshipPeriodController;
+use App\Controllers\DashboardController;
+use App\Controllers\TopicController;
 
 // 2. KHỞI TẠO ROUTER
 $router = new Router();
@@ -52,11 +54,8 @@ $router->get('/logout', function () {
     AuthController::go('/dashboard');
 });
 
-// Sau khi đăng nhập chuyển về /dashboard (bắt buộc đã đăng nhập)
-$router->get('/dashboard', function () {
-    AuthController::requireLogin();
-    require dirname(__DIR__) . '/app/Views/dashboard/index.php';
-});
+// Sau khi đăng nhập chuyển về /dashboard (đồng bộ dữ liệu thực tế)
+$router->get('/dashboard', [DashboardController::class, 'index']);
 
 // --- Quản lý Người dùng & Hồ sơ cá nhân ---
 $router->get('/users',        [UserController::class, 'index']);
@@ -69,6 +68,8 @@ $router->post('/users/update', [UserController::class, 'update']);
 $router->post('/users/status', [UserController::class, 'updateStatus']);
 $router->get('/profile',      [UserController::class, 'profile']);
 $router->post('/profile',     [UserController::class, 'profile']);
+$router->post('/profile/avatar',        [UserController::class, 'profile']);
+$router->post('/profile/avatar/delete', [UserController::class, 'profile']);
 
 // --- Quản lý Đợt thực tập & Đồ án tốt nghiệp ---
 $router->get('/periods',          [InternshipPeriodController::class, 'index']);
@@ -80,6 +81,31 @@ $router->get('/periods/edit',     [InternshipPeriodController::class, 'edit']);
 $router->post('/periods/update',  [InternshipPeriodController::class, 'update']);
 $router->post('/periods/edit',    [InternshipPeriodController::class, 'update']);
 $router->post('/periods/status',  [InternshipPeriodController::class, 'updateStatus']);
+$router->post('/periods/delete',  [InternshipPeriodController::class, 'destroy']);
+$router->get('/periods/delete',   function () { AuthController::go('/periods'); });
+
+// Hỗ trợ alias trực tiếp /periods/{id} sang xem chi tiết đợt
+$reqPath = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '';
+if (preg_match('#/periods/(\d+)$#', $reqPath, $matches)) {
+    $_GET['id'] = (int)$matches[1];
+    $router->get('/periods/' . $matches[1], [InternshipPeriodController::class, 'show']);
+}
+
+// --- Quản lý Đề tài thực tập & Đồ án tốt nghiệp ---
+$router->get('/topics',         [TopicController::class, 'index']);
+$router->get('/topics/create',  [TopicController::class, 'create']);
+$router->post('/topics/create', [TopicController::class, 'store']);
+$router->post('/topics',        [TopicController::class, 'store']);
+$router->get('/topics/detail',  [TopicController::class, 'show']);
+$router->get('/topics/edit',    [TopicController::class, 'edit']);
+$router->post('/topics/update', [TopicController::class, 'update']);
+$router->post('/topics/edit',   [TopicController::class, 'update']);
+
+// Hỗ trợ alias trực tiếp /topics/{id} sang xem chi tiết đề tài
+if (preg_match('#/topics/(\d+)$#', $reqPath, $topicMatches)) {
+    $_GET['id'] = (int)$topicMatches[1];
+    $router->get('/topics/' . $topicMatches[1], [TopicController::class, 'show']);
+}
 
 // Route kiểm tra trạng thái hệ thống và PDO (Dành cho kiểm thử nội bộ)
 $router->get('/status', function () {

@@ -9,7 +9,6 @@ use App\Models\User;
 /**
  * UserController - Quản lý người dùng: danh sách, thêm, sửa, khóa/mở khóa, gán vai trò, hồ sơ cá nhân
  *
- * PHÂN CÔNG: Thành viên 2 (Trúc) - Sprint 1, Sprint 2
  * Chỉ Admin được quản lý tài khoản. Mọi thao tác ghi dữ liệu đều kiểm tra CSRF.
  */
 class UserController extends Controller
@@ -197,7 +196,7 @@ class UserController extends Controller
      * POST _action=update_profile  → cập nhật họ tên, số điện thoại
      * POST _action=change_password → đổi mật khẩu (xác minh mật khẩu hiện tại)
      */
-    public function profile(): void
+        public function profile(): void
     {
         AuthController::requireLogin();
         $userId = (int)$_SESSION['user_id'];
@@ -210,17 +209,67 @@ class UserController extends Controller
         }
 
         $errors = [];
+        $activeTab = is_string($_GET['tab'] ?? null) ? $_GET['tab'] : 'info';
 
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             if (!AuthController::verifyCsrf()) {
-                AuthController::setFlash('error', 'Phiên làm việc không hợp lệ. Vui lòng thử lại.');
+                AuthController::setFlash('error', 'Phiên làm việc không hợp lệ hoặc đã hết hạn. Vui lòng thử lại.');
                 AuthController::go('/profile');
             }
 
+            $uri = $_SERVER['REQUEST_URI'] ?? '';
             $action = is_string($_POST['_action'] ?? null) ? $_POST['_action'] : 'update_profile';
+            if (str_contains($uri, '/profile/avatar/delete')) {
+                $action = 'delete_avatar';
+            } elseif (str_contains($uri, '/profile/avatar')) {
+                $action = 'upload_avatar';
+            }
 
-            if ($action === 'change_password') {
+            if ($action === 'upload_avatar') {
+                // ── Tải lên / Thay đổi ảnh đại diện ──────────────────────────
+                $activeTab = 'avatar';
+                $avatarFile = $_FILES['avatar'] ?? null;
+                $uploadResult = self::processAvatarUpload($avatarFile);
+
+                if (!$uploadResult['ok']) {
+                    $errors[] = $uploadResult['error'];
+                } else {
+                    $newRelPath = $uploadResult['path'];
+                    $oldPath = $user['avatar_path'] ?? $user['avatar'] ?? null;
+
+                    // Lưu vào CSDL
+                    User::updateAvatar($userId, $newRelPath);
+
+                    // Xóa file ảnh cũ nếu có
+                    if ($oldPath && $oldPath !== $newRelPath) {
+                        self::deleteAvatarFile($oldPath);
+                    }
+
+                    // Đồng bộ session
+                    $_SESSION['avatar_path'] = $newRelPath;
+                    $_SESSION['avatar']      = $newRelPath;
+
+                    AuthController::setFlash('success', 'Cập nhật ảnh đại diện thành công.');
+                    AuthController::go('/profile?tab=avatar');
+                }
+            } elseif ($action === 'delete_avatar') {
+                // ── Xóa ảnh đại diện ──────────────────────────────────────────
+                $activeTab = 'avatar';
+                $oldPath = $user['avatar_path'] ?? $user['avatar'] ?? null;
+
+                if ($oldPath) {
+                    self::deleteAvatarFile($oldPath);
+                }
+
+                User::updateAvatar($userId, null);
+                $_SESSION['avatar_path'] = null;
+                $_SESSION['avatar']      = null;
+
+                AuthController::setFlash('success', 'Đã xóa ảnh đại diện thành công.');
+                AuthController::go('/profile?tab=avatar');
+            } elseif ($action === 'change_password') {
                 // ── Đổi mật khẩu ──────────────────────────────────────────────
+                $activeTab = 'password';
                 $currentPw = is_string($_POST['current_password'] ?? null) ? $_POST['current_password'] : '';
                 $newPw     = is_string($_POST['new_password'] ?? null) ? $_POST['new_password'] : '';
                 $confirmPw = is_string($_POST['new_password_confirm'] ?? null) ? $_POST['new_password_confirm'] : '';
@@ -241,10 +290,11 @@ class UserController extends Controller
                         'password'  => $newPw,
                     ]);
                     AuthController::setFlash('success', 'Đổi mật khẩu thành công.');
-                    AuthController::go('/profile');
+                    AuthController::go('/profile?tab=password');
                 }
             } else {
                 // ── Cập nhật thông tin cá nhân (mặc định) ─────────────────────
+                $activeTab = 'info';
                 $fullName = is_string($_POST['full_name'] ?? null) ? trim($_POST['full_name']) : '';
                 $phone    = is_string($_POST['phone'] ?? null) ? trim($_POST['phone']) : '';
 
@@ -259,7 +309,7 @@ class UserController extends Controller
                     User::updateProfile($userId, ['full_name' => $fullName, 'phone' => $phone]);
                     $_SESSION['full_name'] = $fullName;
                     AuthController::setFlash('success', 'Cập nhật hồ sơ thành công.');
-                    AuthController::go('/profile');
+                    AuthController::go('/profile?tab=info');
                 }
 
                 $user['full_name'] = $fullName;
@@ -273,10 +323,159 @@ class UserController extends Controller
             'user'      => $user,
             'roles'     => User::getRoles($userId),
             'errors'    => $errors,
+            'activeTab' => $activeTab,
             'success'   => AuthController::pullFlash('success'),
             'error'     => AuthController::pullFlash('error'),
             'csrfToken' => AuthController::csrfToken(),
         ]);
+    }
+
+    /**
+     * Kiểm tra và xử lý tải lên ảnh đại diện:
+     * - Định dạng cho phép: JPG, PNG, WebP
+     * - Dung lượng tối đa: 2 MB
+     * - Kiểm tra cả MIME thực tế và nội dung cấu trúc ảnh
+     * - Đặt tên ngẫu nhiên, lưu vào public/uploads/avatars/
+     *
+     * @param array|null $file $_FILES['avatar']
+     * @return array{ok: bool, path: ?string, error: ?string}
+     */
+    public static function processAvatarUpload(?array $file): array
+    {
+        if ($file === null || !isset($file['error'])) {
+            return ['ok' => false, 'error' => 'Không tìm thấy dữ liệu tệp tải lên.', 'path' => null];
+        }
+
+        $err = (int)$file['error'];
+        if ($err === UPLOAD_ERR_NO_FILE) {
+            return ['ok' => false, 'error' => 'Vui lòng chọn một tệp hình ảnh để tải lên.', 'path' => null];
+        }
+
+        if ($err === UPLOAD_ERR_INI_SIZE || $err === UPLOAD_ERR_FORM_SIZE) {
+            return ['ok' => false, 'error' => 'Dung lượng ảnh vượt quá giới hạn 2 MB cho phép.', 'path' => null];
+        }
+
+        if ($err !== UPLOAD_ERR_OK) {
+            return ['ok' => false, 'error' => 'Quá trình tải tệp lên gặp sự cố (mã lỗi: ' . $err . ').', 'path' => null];
+        }
+
+        $maxBytes = 2 * 1024 * 1024; // 2 MB
+        $size = (int)($file['size'] ?? 0);
+        if ($size > $maxBytes) {
+            return ['ok' => false, 'error' => 'Dung lượng ảnh vượt quá giới hạn 2 MB cho phép.', 'path' => null];
+        }
+
+        if ($size <= 0) {
+            return ['ok' => false, 'error' => 'Tệp ảnh tải lên bị rỗng.', 'path' => null];
+        }
+
+        $tmpPath = (string)($file['tmp_name'] ?? '');
+        if ($tmpPath === '' || !file_exists($tmpPath)) {
+            return ['ok' => false, 'error' => 'Tệp tạm không tồn tại.', 'path' => null];
+        }
+
+        if (!is_uploaded_file($tmpPath) && php_sapi_name() !== 'cli') {
+            return ['ok' => false, 'error' => 'Tệp tải lên không hợp lệ hoặc không an toàn.', 'path' => null];
+        }
+
+        // 1. Kiểm tra MIME thực tế bằng Fileinfo
+        $finfo = new \finfo(FILEINFO_MIME_TYPE);
+        $realMime = $finfo->file($tmpPath);
+
+        $allowedMimes = [
+            'image/jpeg' => 'jpg',
+            'image/png'  => 'png',
+            'image/webp' => 'webp',
+        ];
+
+        if (!isset($allowedMimes[$realMime])) {
+            return [
+                'ok'    => false,
+                'error' => 'Định dạng tệp không được hỗ trợ. Vui lòng chỉ tải ảnh JPG, PNG hoặc WebP.',
+                'path'  => null,
+            ];
+        }
+
+        // 2. Kiểm tra tính toàn vẹn và nội dung ảnh bằng getimagesize
+        $imageInfo = @getimagesize($tmpPath);
+        if ($imageInfo === false) {
+            return ['ok' => false, 'error' => 'Tệp bị lỗi hoặc nội dung không phải là hình ảnh hợp lệ.', 'path' => null];
+        }
+
+        $imageType = (int)($imageInfo[2] ?? 0);
+        $validImageTypes = [IMAGETYPE_JPEG, IMAGETYPE_PNG];
+        if (defined('IMAGETYPE_WEBP')) {
+            $validImageTypes[] = IMAGETYPE_WEBP;
+        }
+
+        if (!in_array($imageType, $validImageTypes, true)) {
+            return ['ok' => false, 'error' => 'Cấu trúc tệp không khớp với định dạng ảnh cho phép.', 'path' => null];
+        }
+
+        // 3. Đặt tên file ngẫu nhiên an toàn (UUID / random_bytes + timestamp)
+        $ext = $allowedMimes[$realMime];
+        $randomFileName = 'avatar_' . bin2hex(random_bytes(16)) . '_' . time() . '.' . $ext;
+
+        // 4. Đường dẫn thư mục upload chuyên dụng
+        $uploadDir = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'avatars';
+        if (!is_dir($uploadDir)) {
+            if (!@mkdir($uploadDir, 0755, true)) {
+                return ['ok' => false, 'error' => 'Không thể tạo thư mục lưu trữ ảnh trên máy chủ.', 'path' => null];
+            }
+        }
+
+        $destination = $uploadDir . DIRECTORY_SEPARATOR . $randomFileName;
+
+        $saved = false;
+        if (is_uploaded_file($tmpPath)) {
+            $saved = move_uploaded_file($tmpPath, $destination);
+        } else {
+            // Hỗ trợ kiểm thử tự động CLI
+            $saved = @copy($tmpPath, $destination);
+        }
+
+        if (!$saved) {
+            return ['ok' => false, 'error' => 'Không thể lưu tệp ảnh vào thư mục máy chủ.', 'path' => null];
+        }
+
+        // Đảm bảo quyền đọc an toàn cho file vừa tải
+        @chmod($destination, 0644);
+
+        $relativePath = 'uploads/avatars/' . $randomFileName;
+
+        return ['ok' => true, 'path' => $relativePath, 'error' => null];
+    }
+
+    /**
+     * Xóa file ảnh đại diện an toàn trên đĩa (chống Path Traversal)
+     */
+    public static function deleteAvatarFile(?string $relativePath): void
+    {
+        if (empty($relativePath)) {
+            return;
+        }
+
+        $cleanRel = ltrim(str_replace('\\', '/', $relativePath), '/');
+        // Bắt buộc phải bắt đầu bằng uploads/avatars/
+        if (!str_starts_with($cleanRel, 'uploads/avatars/')) {
+            return;
+        }
+
+        $publicDir = realpath(dirname(__DIR__, 2) . '/public');
+        if (!$publicDir) {
+            return;
+        }
+
+        $fullPath = $publicDir . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $cleanRel);
+        $realFile = realpath($fullPath);
+        $realUploadDir = realpath($publicDir . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'avatars');
+
+        if ($realFile && $realUploadDir && str_starts_with($realFile, $realUploadDir)) {
+            $baseName = basename($realFile);
+            if (!in_array($baseName, ['index.html', '.gitkeep', '.htaccess'], true) && is_file($realFile)) {
+                @unlink($realFile);
+            }
+        }
     }
 
     /**

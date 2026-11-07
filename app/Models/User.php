@@ -212,6 +212,27 @@ class User
     }
 
     /**
+     * Cập nhật đường dẫn ảnh đại diện cho người dùng
+     *
+     * @param int $id ID người dùng
+     * @param string|null $avatarPath Đường dẫn tương đối từ thư mục web (ví dụ: uploads/avatars/xxx.jpg) hoặc null khi xóa
+     * @return bool
+     */
+    public static function updateAvatar(int $id, ?string $avatarPath): bool
+    {
+        $pdo = Database::getConnection();
+        $stmt = $pdo->prepare(
+            'UPDATE `users` SET `avatar_path` = :avatar_path, `avatar` = :avatar WHERE `id` = :id'
+        );
+
+        return $stmt->execute([
+            'avatar_path' => $avatarPath,
+            'avatar'      => $avatarPath,
+            'id'          => $id,
+        ]);
+    }
+
+    /**
      * Kiểm tra username đã tồn tại chưa (không phân biệt hoa thường, giống ràng buộc UNIQUE).
      *
      * @param int|null $excludeId bỏ qua user này (dùng khi sửa chính user đó)

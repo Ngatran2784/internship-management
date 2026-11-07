@@ -1,6 +1,6 @@
 <?php
 /**
- * KIỂM THỬ QUẢN LÝ NGƯỜI DÙNG - SPRINT 2 (Trúc)
+ * KIỂM THỬ QUẢN LÝ NGƯỜI DÙNG
  * Chạy: C:\xampp\php\php.exe tests/test_user_management.php
  *
  * Yêu cầu: MySQL đang chạy, đã import database/schema.sql.
@@ -50,7 +50,7 @@ function hasError(array $result, string $needle): bool
     return false;
 }
 
-echo "\n==== KIỂM THỬ QUẢN LÝ NGƯỜI DÙNG - SPRINT 2 (TRÚC) ====\n\n";
+echo "\n==== KIỂM THỬ QUẢN LÝ NGƯỜI DÙNG ====\n\n";
 
 try {
     $pdo = Database::getConnection();

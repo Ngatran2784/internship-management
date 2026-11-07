@@ -16,6 +16,8 @@ $pageTitle = "Đăng nhập - Hệ thống quản lý thực tập và đồ án
     <meta http-equiv="X-UA-Compatible" content="ie=edge"/>
     <title><?= htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8') ?></title>
     
+    <link rel="icon" type="image/x-icon" href="<?= $baseUrl ?>/favicon.ico">
+    <link rel="shortcut icon" type="image/png" href="<?= $baseUrl ?>/assets/images/vinhuni-logo.png">
     <!-- Tabler Core CSS & Icons -->
     <link href="<?= $baseUrl ?>/assets/tabler/css/tabler.min.css" rel="stylesheet"/>
     <link href="<?= $baseUrl ?>/assets/tabler/css/tabler-icons.min.css" rel="stylesheet"/>
@@ -28,31 +30,24 @@ $pageTitle = "Đăng nhập - Hệ thống quản lý thực tập và đồ án
       body {
       	font-feature-settings: "cv03", "cv04", "cv11";
       }
-      .brand-icon {
-        width: 3.25rem;
-        height: 3.25rem;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 50%;
-        background-color: #206bc4;
-        color: #ffffff;
-        margin-bottom: 0.75rem;
-        box-shadow: 0 0.5rem 1rem rgba(32, 107, 196, 0.2);
-      }
+
     </style>
+    <link href="<?= $baseUrl ?>/assets/css/vinhuni-theme.css" rel="stylesheet"/>
   </head>
   <body class="d-flex flex-column bg-light">
     <div class="page page-center py-4">
       <div class="container container-tight">
-        <!-- Logo & Nhận diện thương hiệu -->
+        <!-- Logo & Nhận diện thương hiệu Trường Đại học Vinh -->
         <div class="text-center mb-4">
-          <a href="<?= $baseUrl ?>/" class="d-inline-block text-decoration-none">
-            <div class="brand-icon mx-auto">
-              <i class="ti ti-school fs-1"></i>
+          <a href="<?= $baseUrl ?>/" class="d-inline-block text-decoration-none text-reset">
+            <img src="<?= $baseUrl ?>/assets/images/vinhuni-logo.png"
+                 alt="Logo Trường Đại học Vinh"
+                 class="vinhuni-logo-login mb-2">
+            <div class="text-uppercase fw-bold text-primary mb-1" style="font-size: 1.15rem; letter-spacing: 0.04em;">
+              TRƯỜNG ĐẠI HỌC VINH
             </div>
-            <h1 class="h3 fw-bold text-dark mb-1">HỆ THỐNG QUẢN LÝ THỰC TẬP &amp; ĐỒ ÁN</h1>
-            <div class="text-secondary small">Trường Đại học &bull; Cổng thông tin trực tuyến</div>
+            <h1 class="h4 fw-bold text-dark mb-1">HỆ THỐNG QUẢN LÝ THỰC TẬP VÀ ĐỒ ÁN</h1>
+            <div class="text-secondary small">Cổng thông tin quản lý &amp; theo dõi tiến độ sinh viên</div>
           </a>
         </div>
 

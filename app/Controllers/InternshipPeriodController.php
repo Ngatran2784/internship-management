@@ -363,6 +363,74 @@ class InternshipPeriodController extends Controller
     }
 
     /**
+     * POST /periods/delete - Xóa đợt thực tập/đồ án ở trạng thái Bản nháp
+     * Tuyệt đối KHÔNG hỗ trợ xóa qua GET
+     */
+    public function destroy(): void
+    {
+        AuthController::requireRole('admin', 'training_dept');
+
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+            AuthController::go('/periods');
+        }
+
+        if (!AuthController::verifyCsrf()) {
+            AuthController::setFlash('error', 'Phiên làm việc không hợp lệ (lỗi CSRF). Vui lòng thử lại.');
+            AuthController::go('/periods');
+        }
+
+        $id = filter_var($_POST['id'] ?? null, FILTER_VALIDATE_INT);
+        if ($id === false || $id === null || $id <= 0) {
+            AuthController::setFlash('error', 'Mã định danh đợt không hợp lệ.');
+            AuthController::go('/periods');
+        }
+
+        $period = InternshipPeriod::findById($id);
+        if ($period === null) {
+            AuthController::setFlash('error', 'Đợt thực tập/đồ án không tồn tại hoặc đã bị xóa.');
+            AuthController::go('/periods');
+        }
+
+        $periodName = $period['name'] ?? "ID #{$id}";
+
+        try {
+            InternshipPeriod::delete($id);
+            AuthController::setFlash('success', "Đã xóa đợt bản nháp '{$periodName}' thành công.");
+
+            if ($this->wantsJson()) {
+                $this->sendJson([
+                    'ok'      => true,
+                    'message' => "Đã xóa đợt bản nháp '{$periodName}' thành công.",
+                    'id'      => $id,
+                ]);
+                return;
+            }
+
+            AuthController::go('/periods');
+        } catch (\InvalidArgumentException $e) {
+            AuthController::setFlash('error', $e->getMessage());
+
+            if ($this->wantsJson()) {
+                $this->sendJson(['ok' => false, 'error' => $e->getMessage()], 422);
+                return;
+            }
+
+            AuthController::go('/periods');
+        } catch (\Throwable $e) {
+            error_log('InternshipPeriodController destroy error: ' . $e->getMessage());
+            $errorMsg = 'Lỗi hệ thống khi xóa đợt: ' . $e->getMessage();
+            AuthController::setFlash('error', $errorMsg);
+
+            if ($this->wantsJson()) {
+                $this->sendJson(['ok' => false, 'error' => $errorMsg], 500);
+                return;
+            }
+
+            AuthController::go('/periods');
+        }
+    }
+
+    /**
      * Render View nếu tệp view đã tồn tại; nếu View chưa được tạo (Frontend đang làm song song),
      * tự động trả về phản hồi JSON để Backend có thể kiểm thử độc lập 100%.
      */

@@ -144,29 +144,90 @@ return [
 ];
 ```
 
-#### Bước 2: Tạo Cơ sở dữ liệu & Nạp bảng nền tảng
-1. Truy cập phpMyAdmin tại: `http://localhost/phpmyadmin/`
-2. Tạo cơ sở dữ liệu mới: `internship_management` với Collation: `utf8mb4_unicode_ci`.
-3. Nhập (Import) tệp SQL tại: `database/schema.sql` để tạo 3 bảng nền tảng `roles`, `users`, `user_roles`.
+#### Bước 2: Tạo Cơ sở dữ liệu & Cấu trúc bảng (Schema & Migrations)
+1. Mở phpMyAdmin tại: `http://localhost/phpmyadmin/` (hoặc mở MySQL CLI).
+2. Tạo cơ sở dữ liệu mới:
+   ```sql
+   CREATE DATABASE IF NOT EXISTS `internship_management`
+   CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   ```
+3. Nhập (Import) cấu trúc bảng:
+   - **Cài đặt môi trường mới (Khuyến nghị):** Nhập tệp `database/schema.sql` để tạo toàn bộ 5 bảng chuẩn hóa (`roles`, `users`, `user_roles`, `internship_periods`, `topics`).
+   - **Nâng cấp từ phiên bản cũ (Nếu đã có CSDL nền):** Chạy lần lượt các migration trong thư mục `database/migrations/`:
+     + `database/migrations/create_internship_periods.sql`: Tạo bảng quản lý đợt thực tập & đồ án.
+     + `database/migrations/add_avatar_path_to_users.sql`: Bổ sung cột `avatar_path` cho bảng `users`.
+     + `database/migrations/create_topics_table.sql`: Tạo bảng quản lý đề tài `topics`.
 
-#### Bước 3: Nạp dữ liệu mẫu để thử nghiệm
-Mở Command Prompt hoặc Terminal và chạy lệnh nạp dữ liệu:
+#### Bước 3: Nạp dữ liệu nền tảng bắt buộc (Roles, Accounts, Periods)
+Chạy script nạp dữ liệu nền tảng ban đầu:
 ```bash
 C:\xampp\php\php.exe tests/seed_dev.php
 ```
-Lệnh này sẽ tự động tạo đủ 6 vai trò hệ thống và 2 tài khoản thử nghiệm mặc định (`admin` và `sv001`).
+Lệnh này sẽ tự động khởi tạo an toàn:
+- 6 vai trò hệ thống (`admin`, `training_dept`, `department_head`, `lecturer`, `student`, `enterprise`).
+- 2 tài khoản thử nghiệm mặc định: `admin` (mật khẩu `Admin@123`) và `sv001` (mật khẩu `Sv@12345`).
+- 2 đợt cơ sở: `HK1-2026-TT` (Thực tập tốt nghiệp) và `HK2-2026-DA` (Đồ án tốt nghiệp).
 
-#### Bước 4: Kiểm tra hoạt động hệ thống tự động
-Chạy 2 bộ kiểm thử hồi quy để xác nhận hệ thống sẵn sàng 100%:
-```bash
-# Kiểm tra Core Framework, Router, Views, Database DDL (20/20 PASS):
-C:\xampp\php\php.exe tests/test_core.php
+#### Bước 4: Nạp dữ liệu mẫu đề tài (Seeds Topics)
+Nhập tệp dữ liệu mẫu `database/seeds/topics.sql` để nạp 10 đề tài thực tập & đồ án mẫu:
+- **Cách 1: Qua phpMyAdmin:** Chọn CSDL `internship_management` -> Chọn tab **Import (Nhập)** -> Chọn tệp `database/seeds/topics.sql` -> Nhấn **Import**.
+- **Cách 2: Qua dòng lệnh MySQL:**
+  ```bash
+  C:\xampp\mysql\bin\mysql.exe -u root -p internship_management < database/seeds/topics.sql
+  ```
 
-# Kiểm tra PDO, Bcrypt Hash, CSRF, RBAC, Session (44/44 PASS):
-C:\xampp\php\php.exe tests/test_auth.php
+*Ghi chú:* Tệp `topics.sql` được thiết kế an toàn và idempotent (sử dụng truy vấn tra cứu khóa ngoại động và `WHERE NOT EXISTS`), có thể chạy lại nhiều lần mà không gây lỗi hoặc tạo trùng bản ghi.
+
+#### Bước 5: Kiểm tra và xác minh dữ liệu bằng câu lệnh SELECT
+Kiểm tra dữ liệu đề tài vừa nạp bằng các truy vấn SQL:
+```sql
+-- 1. Xem danh sách 10 đề tài mẫu kèm thông tin đợt và người đề xuất:
+SELECT
+    t.id,
+    t.code AS topic_code,
+    t.name AS topic_name,
+    t.type,
+    t.status,
+    t.max_students,
+    p.code AS period_code,
+    u.username AS proposer
+FROM `topics` t
+INNER JOIN `internship_periods` p ON t.period_id = p.id
+INNER JOIN `users` u ON t.proposer_id = u.id
+ORDER BY t.type ASC, t.id ASC;
+
+-- 2. Thống kê phân bố đề tài theo trạng thái và loại:
+SELECT `type`, `status`, COUNT(*) AS total
+FROM `topics`
+GROUP BY `type`, `status`;
 ```
 
-#### Bước 5: Truy cập website trên trình duyệt
+#### Bước 6: Kiểm tra hoạt động hệ thống tự động (Automated Test Suites)
+Chạy các bộ kiểm thử tự động để xác nhận toàn bộ hệ thống hoạt động ổn định:
+```bash
+# Kiểm tra Core Framework và Router (20/20 PASS):
+C:\xampp\php\php.exe tests/test_core.php
+
+# Kiểm tra Xác thực, RBAC và CSRF (44/44 PASS):
+C:\xampp\php\php.exe tests/test_auth.php
+
+# Kiểm tra Quản lý Người dùng (74/74 PASS):
+C:\xampp\php\php.exe tests/test_user_management.php
+
+# Kiểm tra Quản lý Đợt thực tập/đồ án (39/39 PASS):
+C:\xampp\php\php.exe tests/test_internship_periods.php
+
+# Kiểm tra Quản lý Đề tài (46/46 PASS):
+C:\xampp\php\php.exe tests/test_topics.php
+
+# Kiểm tra Giao diện Sidebar & Quyền hạn (48/48 PASS):
+C:\xampp\php\php.exe tests/test_sidebar.php
+
+# Kiểm tra Ảnh đại diện người dùng (26/26 PASS):
+C:\xampp\php\php.exe tests/test_avatar.php
+```
+
+#### Bước 7: Truy cập website trên trình duyệt
 Mở trình duyệt và truy cập theo đường dẫn:
 ```text
 http://localhost/CNPM/internship-management/public/
@@ -228,11 +289,17 @@ flowchart LR
 - [ ] Hoàn thiện giao diện Hồ sơ cá nhân (`app/Views/users/profile.php`): cập nhật thông tin liên hệ, đổi mật khẩu an toàn.
 - [ ] Cơ chế phân trang (Pagination), tìm kiếm theo họ tên/mã số và lọc theo vai trò.
 
-### Sprint 3: Quản lý Đợt thực tập/Đồ án & Đề xuất/Phê duyệt Đề tài
-- [ ] Thiết kế bảng `internship_terms` (Đợt thực tập/đồ án) và `topics` (Đề tài).
-- [ ] Quản lý đợt thực tập/đồ án: Mở đợt, thiết lập thời hạn đăng ký, hạn nộp báo cáo, trạng thái đợt.
-- [ ] Giảng viên và Doanh nghiệp gửi đề xuất đề tài mới kèm mô tả yêu cầu, số lượng sinh viên tối đa.
-- [ ] Trưởng bộ môn duyệt/từ chối danh mục đề tài; công bố danh sách đề tài hợp lệ cho sinh viên.
+### Sprint 3: Quản lý Đợt thực tập/Đồ án & Backend Quản lý Đề tài
+- [x] Thiết kế chuẩn hóa bảng `internship_periods` và hoàn thiện CRUD quản lý đợt thực tập/đồ án.
+- [x] Thiết kế CSDL bảng `topics` (`database/migrations/create_topics_table.sql` & tích hợp `schema.sql`).
+- [x] Xây dựng Model `Topic.php` hỗ trợ đầy đủ bộ lọc, tìm kiếm, kiểm tra ràng buộc, mã đề tài duy nhất và phân quyền `canEdit()`.
+- [x] Xây dựng Controller `TopicController.php` xử lý CRUD, phân quyền vai trò (Admin, Giảng viên, Sinh viên), bảo vệ CSRF và cơ chế JSON fallback.
+- [x] Đăng ký đầy đủ các route quản lý đề tài trong Front Controller `public/index.php`.
+- [x] Xây dựng bộ dữ liệu mẫu 10 đề tài thực tập & đồ án an toàn, idempotent (`database/seeds/topics.sql`).
+- [x] Viết tài liệu hợp đồng kỹ thuật và bàn giao module (`docs/topic-module-contract.md`).
+- [x] Xây dựng bộ kiểm thử tự động 46 test cases đạt kết quả 100% PASS (`tests/test_topics.php`).
+- [ ] Xây dựng giao diện người dùng Frontend (`app/Views/topics/` - Đang triển khai song song).
+- [ ] Phân hệ phê duyệt và thẩm định đề tài của Hội đồng / Trưởng bộ môn.
 
 ### Sprint 4: Đăng ký Nguyện vọng & Ghép cặp / Phân công Giảng viên
 - [ ] Sinh viên tra cứu danh mục đề tài đang mở và đăng ký nguyện vọng ưu tiên (Nguyện vọng 1, 2, 3).
