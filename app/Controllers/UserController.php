@@ -15,7 +15,7 @@ use App\Models\User;
 class UserController extends Controller
 {
     /**
-     * GET /users?role=&keyword= - Danh sách người dùng kèm vai trò, có bộ lọc (chỉ admin)
+     * GET /users?role=&keyword=&status= - Danh sách người dùng kèm vai trò, có bộ lọc (chỉ admin)
      */
     public function index(): void
     {
@@ -23,14 +23,17 @@ class UserController extends Controller
 
         $role    = self::text($_GET, 'role');
         $keyword = mb_substr(self::text($_GET, 'keyword'), 0, 100);
+        $statusRaw = self::text($_GET, 'status');
+        $status  = ($statusRaw === '0' || $statusRaw === '1') ? (int)$statusRaw : null;
 
         $this->respond('users/index', [
-            'users'     => User::all($role !== '' ? $role : null, $keyword !== '' ? $keyword : null),
-            'roles'     => Role::all(),
-            'filters'   => ['role' => $role, 'keyword' => $keyword],
-            'success'   => AuthController::pullFlash('success'),
-            'error'     => AuthController::pullFlash('error'),
-            'csrfToken' => AuthController::csrfToken(),
+            'users'       => User::all($role !== '' ? $role : null, $keyword !== '' ? $keyword : null, $status),
+            'allUsers'    => User::all(),   // dùng cho stat cards toàn cục (không filter)
+            'roles'       => Role::all(),
+            'filters'     => ['role' => $role, 'keyword' => $keyword, 'status' => $statusRaw],
+            'success'     => AuthController::pullFlash('success'),
+            'error'       => AuthController::pullFlash('error'),
+            'csrfToken'   => AuthController::csrfToken(),
         ]);
     }
 
@@ -113,6 +116,36 @@ class UserController extends Controller
 
         try {
             User::update($id, $result['data']);
+
+            // Cập nhật vai trò nếu form có gửi phần roles (có hidden field _roles_submitted)
+            if (!empty($_POST['_roles_submitted'])) {
+                $validRoleIds = array_map(fn($r) => (int)$r['id'], Role::all());
+                $rawRoleIds   = is_array($_POST['role_ids'] ?? null) ? $_POST['role_ids'] : [];
+                $newRoleIds   = [];
+
+                foreach ($rawRoleIds as $raw) {
+                    $rid = filter_var($raw, FILTER_VALIDATE_INT);
+                    if ($rid !== false && in_array($rid, $validRoleIds, true)) {
+                        $newRoleIds[] = $rid;
+                    }
+                }
+
+                // Không cho admin tự gỡ quyền admin của chính mình
+                if ($id === (int)($_SESSION['user_id'] ?? 0)) {
+                    $adminRole = \App\Models\Role::findByName('admin');
+                    if ($adminRole !== null && !in_array((int)$adminRole['id'], $newRoleIds, true)) {
+                        $this->renderEditForm($user, ['Bạn không thể tự gỡ vai trò Quản trị viên của chính mình.'], self::oldInput($_POST));
+                        return;
+                    }
+                }
+
+                User::assignRoles($id, $newRoleIds);
+
+                // Cập nhật session roles nếu admin tự sửa chính mình
+                if ($id === (int)($_SESSION['user_id'] ?? 0)) {
+                    $_SESSION['roles'] = User::getRoles($id);
+                }
+            }
         } catch (\PDOException $e) {
             if ((string)$e->getCode() === '23000') {
                 http_response_code(422);
@@ -161,6 +194,8 @@ class UserController extends Controller
 
     /**
      * GET|POST /profile - Xem và cập nhật hồ sơ cá nhân của chính mình
+     * POST _action=update_profile  → cập nhật họ tên, số điện thoại
+     * POST _action=change_password → đổi mật khẩu (xác minh mật khẩu hiện tại)
      */
     public function profile(): void
     {
@@ -182,25 +217,54 @@ class UserController extends Controller
                 AuthController::go('/profile');
             }
 
-            $fullName = is_string($_POST['full_name'] ?? null) ? trim($_POST['full_name']) : '';
-            $phone    = is_string($_POST['phone'] ?? null) ? trim($_POST['phone']) : '';
+            $action = is_string($_POST['_action'] ?? null) ? $_POST['_action'] : 'update_profile';
 
-            if ($fullName === '' || mb_strlen($fullName) > 100) {
-                $errors[] = 'Họ tên không được để trống và tối đa 100 ký tự.';
-            }
-            if ($phone !== '' && !preg_match('/^[0-9+\-\s().]{8,20}$/', $phone)) {
-                $errors[] = 'Số điện thoại không hợp lệ.';
-            }
+            if ($action === 'change_password') {
+                // ── Đổi mật khẩu ──────────────────────────────────────────────
+                $currentPw = is_string($_POST['current_password'] ?? null) ? $_POST['current_password'] : '';
+                $newPw     = is_string($_POST['new_password'] ?? null) ? $_POST['new_password'] : '';
+                $confirmPw = is_string($_POST['new_password_confirm'] ?? null) ? $_POST['new_password_confirm'] : '';
 
-            if (!$errors) {
-                User::updateProfile($userId, ['full_name' => $fullName, 'phone' => $phone]);
-                $_SESSION['full_name'] = $fullName;
-                AuthController::setFlash('success', 'Cập nhật hồ sơ thành công.');
-                AuthController::go('/profile');
-            }
+                if ($currentPw === '') {
+                    $errors[] = 'Vui lòng nhập mật khẩu hiện tại.';
+                } elseif (!password_verify($currentPw, $user['password'] ?? '')) {
+                    $errors[] = 'Mật khẩu hiện tại không đúng.';
+                }
 
-            $user['full_name'] = $fullName;
-            $user['phone']     = $phone;
+                $errors = array_merge($errors, self::checkPassword($newPw, $confirmPw, true));
+
+                if (!$errors) {
+                    User::update($userId, [
+                        'full_name' => $user['full_name'],
+                        'email'     => $user['email'],
+                        'phone'     => $user['phone'] ?? '',
+                        'password'  => $newPw,
+                    ]);
+                    AuthController::setFlash('success', 'Đổi mật khẩu thành công.');
+                    AuthController::go('/profile');
+                }
+            } else {
+                // ── Cập nhật thông tin cá nhân (mặc định) ─────────────────────
+                $fullName = is_string($_POST['full_name'] ?? null) ? trim($_POST['full_name']) : '';
+                $phone    = is_string($_POST['phone'] ?? null) ? trim($_POST['phone']) : '';
+
+                if ($fullName === '' || mb_strlen($fullName) > 100) {
+                    $errors[] = 'Họ tên không được để trống và tối đa 100 ký tự.';
+                }
+                if ($phone !== '' && !preg_match('/^[0-9+\-\s().]{8,20}$/', $phone)) {
+                    $errors[] = 'Số điện thoại không hợp lệ.';
+                }
+
+                if (!$errors) {
+                    User::updateProfile($userId, ['full_name' => $fullName, 'phone' => $phone]);
+                    $_SESSION['full_name'] = $fullName;
+                    AuthController::setFlash('success', 'Cập nhật hồ sơ thành công.');
+                    AuthController::go('/profile');
+                }
+
+                $user['full_name'] = $fullName;
+                $user['phone']     = $phone;
+            }
         }
 
         unset($user['password']);

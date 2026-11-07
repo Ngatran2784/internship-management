@@ -58,6 +58,32 @@ $isStudent = in_array('student', $currentRoles, true);
         .app-sidebar .nav-link { white-space: nowrap; padding: 0.5rem 0.875rem; text-overflow: ellipsis; overflow: hidden; }
         .app-sidebar .nav-link-title { font-size: .875rem; font-weight: 500; line-height: 1.35; white-space: nowrap; }
         .app-sidebar .nav-link.disabled { color: rgba(255, 255, 255, .72); opacity: 1; cursor: not-allowed; }
+        .app-sidebar .nav-link.active {
+            color: #fff;
+            background: rgba(255, 255, 255, .12);
+            box-shadow: inset 3px 0 0 #79c0ff;
+        }
+        .app-sidebar .nav-link.active .nav-link-icon { color: #9bd0ff; }
+        .app-sidebar .sidebar-group-toggle {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: rgba(255, 255, 255, .62);
+            border: 0;
+            background: transparent;
+            text-align: left;
+            text-transform: uppercase;
+            font-size: .68rem;
+            font-weight: 700;
+            letter-spacing: .08em;
+        }
+        .app-sidebar .sidebar-group-toggle:hover,
+        .app-sidebar .sidebar-group-toggle:focus-visible { color: #fff; }
+        .app-sidebar .sidebar-group-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+        .app-sidebar .sidebar-group-chevron { flex: 0 0 auto; transition: transform .2s ease; }
+        .app-sidebar .sidebar-group-toggle[aria-expanded="true"] .sidebar-group-chevron { transform: rotate(180deg); }
+        .app-sidebar .sidebar-submenu { padding-left: .5rem; }
         .app-search { width: min(20rem, 100%); }
         .dashboard-stat-body { padding-top: .7rem !important; padding-bottom: .7rem !important; }
         .app-search .form-control { height: 2rem; }
@@ -134,6 +160,9 @@ $isStudent = in_array('student', $currentRoles, true);
                             </div>
                             <a href="<?= $escape($baseUrl) ?>/dashboard" class="dropdown-item">
                                 <i class="ti ti-dashboard me-2"></i>Bảng điều khiển tổng quan
+                            </a>
+                            <a href="<?= $escape($baseUrl) ?>/profile" class="dropdown-item">
+                                <i class="ti ti-user me-2"></i>Hồ sơ cá nhân
                             </a>
                             <div class="dropdown-divider"></div>
                             <form action="<?= $escape($baseUrl) ?>/logout" method="POST" class="m-0 p-0">

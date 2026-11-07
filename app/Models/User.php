@@ -100,8 +100,9 @@ class User
      *
      * @param string|null $role    chỉ lấy người có vai trò này (tên, ví dụ 'student')
      * @param string|null $keyword tìm theo username, email hoặc họ tên
+     * @param int|null    $status  lọc theo trạng thái: 1 = hoạt động, 0 = bị khóa, null = tất cả
      */
-    public static function all(?string $role = null, ?string $keyword = null): array
+    public static function all(?string $role = null, ?string $keyword = null, ?int $status = null): array
     {
         $pdo    = Database::getConnection();
         $where  = [];
@@ -120,6 +121,11 @@ class User
             $params['kw_username'] = $like;
             $params['kw_email']    = $like;
             $params['kw_name']     = $like;
+        }
+
+        if ($status === 0 || $status === 1) {
+            $where[] = 'u.`status` = :status_filter';
+            $params['status_filter'] = $status;
         }
 
         $sql = 'SELECT u.`id`, u.`username`, u.`email`, u.`full_name`, u.`phone`, u.`status`, u.`created_at`
