@@ -14,7 +14,7 @@ $oldPeriodId = is_scalar($old['period_id'] ?? null) ? (string)$old['period_id'] 
 ?>
 <div class="container-xl">
     <div class="mb-3"><a class="btn btn-outline-secondary" href="<?= $escape($baseUrl) ?>/topics">
-        <i class="ti ti-arrow-left me-1"></i>Danh sách đề tài
+        <i class="ti ti-arrow-left me-1"></i> Quay lại danh sách đề tài
     </a></div>
     <?php if ($errors): ?>
         <div class="alert alert-danger" role="alert">

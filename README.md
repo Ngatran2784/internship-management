@@ -79,10 +79,18 @@ internship-management/
 │   │   └── Controller.php          # Base Controller hỗ trợ render, redirect, escape XSS
 │   ├── Controllers/                # Tầng Điều khiển tiếp nhận nghiệp vụ
 │   │   ├── AuthController.php      # Xác thực đăng nhập, đăng xuất, Session, CSRF, RBAC
-│   │   └── UserController.php      # Quản lý tài khoản, gán vai trò, hồ sơ cá nhân
+│   │   ├── UserController.php      # Quản lý tài khoản, gán vai trò, hồ sơ cá nhân
+│   │   ├── InternshipPeriodController.php # Quản lý các đợt thực tập / đồ án
+│   │   ├── TopicController.php     # Quản lý CRUD đề tài, phân quyền đề xuất
+│   │   ├── TopicApprovalController.php # Xét duyệt đề tài, lịch sử phê duyệt / từ chối
+│   │   └── TopicWishController.php # Đăng ký và sắp xếp nguyện vọng đề tài sinh viên
 │   ├── Models/                     # Tầng Mô hình dữ liệu
 │   │   ├── User.php                # Thao tác bảng users và liên kết user_roles
-│   │   └── Role.php                # Thao tác bảng roles
+│   │   ├── Role.php                # Thao tác bảng roles
+│   │   ├── InternshipPeriod.php    # Thao tác bảng internship_periods
+│   │   ├── Topic.php               # Thao tác bảng topics
+│   │   ├── TopicApproval.php       # Thao tác bảng topic_approvals
+│   │   └── TopicWish.php           # Thao tác bảng topic_wishes
 │   └── Views/                      # Tầng Giao diện người dùng
 │       ├── layouts/                # Khung giao diện dùng chung
 │       │   ├── header.php          # Navbar trên, dropdown tài khoản & CSS Tabler
@@ -96,6 +104,8 @@ internship-management/
 │   ├── database.example.php        # Tệp cấu hình CSDL mẫu
 │   └── database.php                # Cấu hình CSDL cục bộ thực tế (loại khỏi Git)
 ├── database/
+│   ├── internship_management.sql   # Tệp CSDL tổng hợp toàn diện (7 bảng + dữ liệu mẫu)
+│   ├── internship_management_full.sql # Bản sao đồng bộ của tệp CSDL tổng hợp
 │   └── schema.sql                  # Kịch bản DDL tạo bảng (roles, users, user_roles)
 ├── docs/                           # Tài liệu kỹ thuật
 │   ├── database-design.md          # Thiết kế ERD & mô tả cấu trúc bảng
@@ -144,40 +154,46 @@ return [
 ];
 ```
 
-#### Bước 2: Tạo Cơ sở dữ liệu & Cấu trúc bảng (Schema & Migrations)
+#### Bước 2: Tạo Cơ sở dữ liệu & Cấu trúc bảng
+
+##### Cách 1: Cài đặt mới 1-Click bằng 1 file SQL duy nhất (Khuyến nghị cho máy mới)
 1. Mở phpMyAdmin tại: `http://localhost/phpmyadmin/` (hoặc mở MySQL CLI).
 2. Tạo cơ sở dữ liệu mới:
    ```sql
    CREATE DATABASE IF NOT EXISTS `internship_management`
    CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
    ```
-3. Nhập (Import) cấu trúc bảng:
-   - **Cài đặt môi trường mới (Khuyến nghị):** Nhập tệp `database/schema.sql` để tạo toàn bộ 5 bảng chuẩn hóa (`roles`, `users`, `user_roles`, `internship_periods`, `topics`).
-   - **Nâng cấp từ phiên bản cũ (Nếu đã có CSDL nền):** Chạy lần lượt các migration trong thư mục `database/migrations/`:
-     + `database/migrations/create_internship_periods.sql`: Tạo bảng quản lý đợt thực tập & đồ án.
-     + `database/migrations/add_avatar_path_to_users.sql`: Bổ sung cột `avatar_path` cho bảng `users`.
-     + `database/migrations/create_topics_table.sql`: Tạo bảng quản lý đề tài `topics`.
+3. Nhập (Import) tệp cơ sở dữ liệu tổng hợp:
+   - Chọn CSDL `internship_management` -> Chọn tab **Import (Nhập)**.
+   - Chọn tệp: `database/internship_management_full.sql` -> Nhấn **Import**.
+   - *Ghi chú:* Tệp này đã tích hợp đầy đủ 5 bảng chuẩn hóa (`roles`, `users`, `user_roles`, `internship_periods`, `topics`), 6 vai trò hệ thống, 2 tài khoản demo (`admin` / `Admin@123`, `sv001` / `Sv@12345`), 2 đợt cơ sở và 10 đề tài mẫu. Sau khi import tệp này, bạn **không cần** chạy thêm `seed_dev.php` hay `topics.sql`.
 
-#### Bước 3: Nạp dữ liệu nền tảng bắt buộc (Roles, Accounts, Periods)
-Chạy script nạp dữ liệu nền tảng ban đầu:
+##### Cách 2: Nâng cấp tuần tự (Dành cho CSDL đã có từ các phiên bản trước)
+> [!WARNING]
+> Không import tệp `internship_management_full.sql` lên cơ sở dữ liệu đang có dữ liệu thật để tránh xung đột dữ liệu. Hãy sử dụng các migration tương ứng:
+- Nếu thiếu bảng đợt: Chạy `database/migrations/create_internship_periods.sql`.
+- Nếu thiếu cột ảnh đại diện: Chạy `database/migrations/add_avatar_path_to_users.sql`.
+- Nếu thiếu bảng đề tài: Chạy `database/migrations/create_topics_table.sql`.
+- Nạp thêm dữ liệu mẫu đề tài: Import `database/seeds/topics.sql`.
+
+#### Bước 3: Nạp dữ liệu nền tảng bắt buộc (Chỉ cần nếu cài đặt theo Cách 2)
+Nếu bạn cài đặt theo **Cách 1 (tệp full.sql)**, hãy bỏ qua bước này. Nếu cài đặt thủ công theo Cách 2, chạy:
 ```bash
-C:\xampp\php\php.exe tests/seed_dev.php
+C:
+mpp\php\php.exe tests/seed_dev.php
 ```
-Lệnh này sẽ tự động khởi tạo an toàn:
+Lệnh này sẽ khởi tạo:
 - 6 vai trò hệ thống (`admin`, `training_dept`, `department_head`, `lecturer`, `student`, `enterprise`).
-- 2 tài khoản thử nghiệm mặc định: `admin` (mật khẩu `Admin@123`) và `sv001` (mật khẩu `Sv@12345`).
-- 2 đợt cơ sở: `HK1-2026-TT` (Thực tập tốt nghiệp) và `HK2-2026-DA` (Đồ án tốt nghiệp).
+- 2 tài khoản thử nghiệm: `admin` (`Admin@123`) và `sv001` (`Sv@12345`).
+- 2 đợt cơ sở: `HK1-2026-TT` và `HK2-2026-DA`.
 
-#### Bước 4: Nạp dữ liệu mẫu đề tài (Seeds Topics)
-Nhập tệp dữ liệu mẫu `database/seeds/topics.sql` để nạp 10 đề tài thực tập & đồ án mẫu:
-- **Cách 1: Qua phpMyAdmin:** Chọn CSDL `internship_management` -> Chọn tab **Import (Nhập)** -> Chọn tệp `database/seeds/topics.sql` -> Nhấn **Import**.
-- **Cách 2: Qua dòng lệnh MySQL:**
-  ```bash
-  C:\xampp\mysql\bin\mysql.exe -u root -p internship_management < database/seeds/topics.sql
-  ```
-
-*Ghi chú:* Tệp `topics.sql` được thiết kế an toàn và idempotent (sử dụng truy vấn tra cứu khóa ngoại động và `WHERE NOT EXISTS`), có thể chạy lại nhiều lần mà không gây lỗi hoặc tạo trùng bản ghi.
-
+#### Bước 4: Nạp dữ liệu mẫu đề tài (Chỉ cần nếu cài đặt theo Cách 2)
+Nếu bạn cài đặt theo **Cách 1 (tệp full.sql)**, hãy bỏ qua bước này vì 10 đề tài mẫu đã được nạp sẵn.
+Nếu cài đặt theo Cách 2, import tệp `database/seeds/topics.sql` qua phpMyAdmin hoặc MySQL CLI:
+```bash
+C:
+mpp\mysql\bin\mysql.exe -u root -p internship_management < database/seeds/topics.sql
+```
 #### Bước 5: Kiểm tra và xác minh dữ liệu bằng câu lệnh SELECT
 Kiểm tra dữ liệu đề tài vừa nạp bằng các truy vấn SQL:
 ```sql
@@ -219,6 +235,12 @@ C:\xampp\php\php.exe tests/test_internship_periods.php
 
 # Kiểm tra Quản lý Đề tài (50/50 PASS):
 C:\xampp\php\php.exe tests/test_topics.php
+
+# Kiểm tra Xét duyệt Đề tài (66/66 PASS):
+C:\xampp\php\php.exe tests/test_topic_approval.php
+
+# Kiểm tra Đăng ký Nguyện vọng Đề tài (48/48 PASS):
+C:\xampp\php\php.exe tests/test_topic_wishes.php
 
 # Kiểm tra quyền truy cập đề tài (13/13 PASS):
 C:\xampp\php\php.exe tests/test_topic_access.php
@@ -304,6 +326,13 @@ flowchart LR
 - [x] Xây dựng giao diện danh sách, tạo, sửa và chi tiết đề tài (`app/Views/topics/`).
 - [x] Hoàn thiện gửi duyệt, phê duyệt, từ chối và lịch sử xét duyệt đề tài.
 - [x] Bổ sung menu đề tài theo vai trò và trạng thái route.
+- [x] S3-01: Hoàn thiện CSDL đề tài, phê duyệt và nguyện vọng (`topics`, `topic_approvals`, `topic_wishes`).
+- [x] S3-02: Hoàn thiện CRUD đề tài giảng viên và phân quyền đề xuất.
+- [x] S3-03: Hoàn thiện quy trình xét duyệt/từ chối và lịch sử xét duyệt đề tài (`app/Models/TopicApproval.php`).
+- [x] S3-04: Hoàn thiện nghiệp vụ đăng ký và sắp xếp nguyện vọng đề tài sinh viên (`app/Models/TopicWish.php`).
+- [x] S3-05: Hoàn thiện giao diện quản lý và xét duyệt đề tài (`app/Views/topics/`).
+- [x] S3-06: Hoàn thiện giao diện đăng ký nguyện vọng cho sinh viên (`app/Views/topic_wishes/`).
+- [x] S3-07: Bộ kiểm thử tự động toàn diện Sprint 3 đạt 250 assertions 100% PASS (hạn, trùng, quyền, rollback).
 
 ### Sprint 4: Đăng ký Nguyện vọng & Ghép cặp / Phân công Giảng viên
 - [ ] Sinh viên tra cứu danh mục đề tài đang mở và đăng ký nguyện vọng ưu tiên (Nguyện vọng 1, 2, 3).

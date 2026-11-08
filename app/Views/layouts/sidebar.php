@@ -50,6 +50,7 @@ $isTopicCreate = ($currentRoute === '/topics/create');
 $isTopicPending = ($currentRoute === '/topics/pending');
 $isTopicBrowse = (str_starts_with($currentRoute, '/topics') && !$isTopicCreate && !$isTopicPending);
 $isTopicsGroup = ($isTopicBrowse || $isTopicCreate || $isTopicPending);
+$isWishes = str_starts_with($currentRoute, '/wishes');
 ?>
 <aside class="navbar navbar-vertical navbar-expand-lg app-sidebar" data-bs-theme="dark">
     <div class="container-fluid">
@@ -206,6 +207,18 @@ $isTopicsGroup = ($isTopicBrowse || $isTopicCreate || $isTopicPending);
                         </div>
                     </li>
 
+                    <?php if ($isStudent): ?>
+                    <!-- Đăng ký nguyện vọng (nếu tài khoản kiêm vai trò sinh viên) -->
+                    <li class="nav-item">
+                        <a class="nav-link<?= $isWishes ? ' active' : '' ?>"
+                           href="<?= $escape($baseUrl) ?>/wishes"
+                           <?= $isWishes ? 'aria-current="page"' : '' ?>>
+                            <span class="nav-link-icon"><i class="ti ti-list-numbers ti-list-ordered fs-2"></i></span>
+                            <span class="nav-link-title">Đăng ký nguyện vọng</span>
+                        </a>
+                    </li>
+                    <?php endif; ?>
+
                     <!-- 6. Phân công đề tài và giảng viên -->
                     <li class="nav-item">
                         <span class="nav-link disabled" aria-disabled="true">
@@ -223,6 +236,86 @@ $isTopicsGroup = ($isTopicBrowse || $isTopicCreate || $isTopicPending);
                     </li>
 
                     <!-- 8. Thống kê và báo cáo -->
+                    <li class="nav-item">
+                        <span class="nav-link disabled" aria-disabled="true">
+                            <span class="nav-link-icon"><i class="ti ti-chart-bar fs-2"></i></span>
+                            <span class="nav-link-title">Thống kê và báo cáo</span>
+                        </span>
+                    </li>
+
+                    <?php elseif ($isDeptHead): ?>
+                    <!-- ======================================================== -->
+                    <!-- VAI TRÒ: CÁN BỘ KHOA / TRƯỞNG BỘ MÔN (department_head)    -->
+                    <!-- ======================================================== -->
+
+                    <li class="nav-item">
+                        <a class="nav-link<?= $isDashboard ? ' active' : '' ?>"
+                           href="<?= $escape($baseUrl) ?>/dashboard"
+                           <?= $isDashboard ? 'aria-current="page"' : '' ?>>
+                            <span class="nav-link-icon"><i class="ti ti-dashboard fs-2"></i></span>
+                            <span class="nav-link-title">Bảng điều khiển</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link<?= $isProfile ? ' active' : '' ?>"
+                           href="<?= $escape($baseUrl) ?>/profile"
+                           <?= $isProfile ? 'aria-current="page"' : '' ?>>
+                            <span class="nav-link-icon"><i class="ti ti-user-circle fs-2"></i></span>
+                            <span class="nav-link-title">Thông tin cá nhân</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <span class="nav-link disabled" aria-disabled="true">
+                            <span class="nav-link-icon"><i class="ti ti-calendar-event fs-2"></i></span>
+                            <span class="nav-link-title">Quản lý đợt thực tập &amp; đồ án</span>
+                        </span>
+                    </li>
+                    <li class="nav-item sidebar-nav-group">
+                        <button class="nav-link sidebar-group-toggle" type="button"
+                                data-bs-toggle="collapse" data-bs-target="#sidebar-topics-menu-depthead"
+                                aria-controls="sidebar-topics-menu-depthead" aria-expanded="<?= $isTopicsGroup ? 'true' : 'false' ?>">
+                            <span class="nav-link-icon"><i class="ti ti-file-certificate fs-2"></i></span>
+                            <span class="nav-link-title sidebar-group-title">Quản lý đề tài</span>
+                            <i class="ti ti-chevron-down sidebar-group-chevron ms-auto" aria-hidden="true"></i>
+                        </button>
+                        <div class="collapse<?= $isTopicsGroup ? ' show' : '' ?>" id="sidebar-topics-menu-depthead">
+                            <ul class="navbar-nav sidebar-submenu">
+                                <li class="nav-item">
+                                    <a class="nav-link<?= $isTopicBrowse ? ' active' : '' ?>"
+                                       href="<?= $escape($baseUrl) ?>/topics" <?= $isTopicBrowse ? 'aria-current="page"' : '' ?>>
+                                        <span class="nav-link-icon"><i class="ti ti-list fs-2"></i></span>
+                                        <span class="nav-link-title">Danh sách đề tài</span>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link<?= $isTopicCreate ? ' active' : '' ?>"
+                                       href="<?= $escape($baseUrl) ?>/topics/create" <?= $isTopicCreate ? 'aria-current="page"' : '' ?>>
+                                        <span class="nav-link-icon"><i class="ti ti-plus fs-2"></i></span>
+                                        <span class="nav-link-title">Đề xuất đề tài</span>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link<?= $isTopicPending ? ' active' : '' ?>"
+                                       href="<?= $escape($baseUrl) ?>/topics/pending" <?= $isTopicPending ? 'aria-current="page"' : '' ?>>
+                                        <span class="nav-link-icon"><i class="ti ti-checklist fs-2"></i></span>
+                                        <span class="nav-link-title">Đề tài chờ duyệt</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    </li>
+                    <li class="nav-item">
+                        <span class="nav-link disabled" aria-disabled="true">
+                            <span class="nav-link-icon"><i class="ti ti-user-share fs-2"></i></span>
+                            <span class="nav-link-title">Phân công đề tài và giảng viên</span>
+                        </span>
+                    </li>
+                    <li class="nav-item">
+                        <span class="nav-link disabled" aria-disabled="true">
+                            <span class="nav-link-icon"><i class="ti ti-list-check fs-2"></i></span>
+                            <span class="nav-link-title">Theo dõi tiến độ</span>
+                        </span>
+                    </li>
                     <li class="nav-item">
                         <span class="nav-link disabled" aria-disabled="true">
                             <span class="nav-link-icon"><i class="ti ti-chart-bar fs-2"></i></span>
@@ -311,75 +404,9 @@ $isTopicsGroup = ($isTopicBrowse || $isTopicCreate || $isTopicPending);
                         </span>
                     </li>
 
-                    <?php elseif ($isStudent): ?>
+                    <?php elseif ($isLecturer): ?>
                     <!-- ======================================== -->
-                    <!-- VAI TRÒ: SINH VIÊN                       -->
-                    <!-- ======================================== -->
-
-                    <li class="nav-item">
-                        <a class="nav-link<?= $isDashboard ? ' active' : '' ?>"
-                           href="<?= $escape($baseUrl) ?>/dashboard"
-                           <?= $isDashboard ? 'aria-current="page"' : '' ?>>
-                            <span class="nav-link-icon"><i class="ti ti-dashboard fs-2"></i></span>
-                            <span class="nav-link-title">Bảng điều khiển</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link<?= $isProfile ? ' active' : '' ?>"
-                           href="<?= $escape($baseUrl) ?>/profile"
-                           <?= $isProfile ? 'aria-current="page"' : '' ?>>
-                            <span class="nav-link-icon"><i class="ti ti-user-circle fs-2"></i></span>
-                            <span class="nav-link-title">Thông tin cá nhân</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link<?= $isTopicBrowse ? ' active' : '' ?>"
-                           href="<?= $escape($baseUrl) ?>/topics" <?= $isTopicBrowse ? 'aria-current="page"' : '' ?>>
-                            <span class="nav-link-icon"><i class="ti ti-files fs-2"></i></span>
-                            <span class="nav-link-title">Danh sách đề tài</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link<?= $isTopicCreate ? ' active' : '' ?>"
-                           href="<?= $escape($baseUrl) ?>/topics/create" <?= $isTopicCreate ? 'aria-current="page"' : '' ?>>
-                            <span class="nav-link-icon"><i class="ti ti-plus fs-2"></i></span>
-                            <span class="nav-link-title">Đề xuất đề tài</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <span class="nav-link disabled" aria-disabled="true">
-                            <span class="nav-link-icon"><i class="ti ti-calendar-time fs-2"></i></span>
-                            <span class="nav-link-title">Xem đợt thực tập</span>
-                        </span>
-                    </li>
-                    <li class="nav-item">
-                        <span class="nav-link disabled" aria-disabled="true">
-                            <span class="nav-link-icon"><i class="ti ti-file-pencil fs-2"></i></span>
-                            <span class="nav-link-title">Đăng ký đề tài</span>
-                        </span>
-                    </li>
-                    <li class="nav-item">
-                        <span class="nav-link disabled" aria-disabled="true">
-                            <span class="nav-link-icon"><i class="ti ti-list-check fs-2"></i></span>
-                            <span class="nav-link-title">Theo dõi tiến độ</span>
-                        </span>
-                    </li>
-                    <li class="nav-item">
-                        <span class="nav-link disabled" aria-disabled="true">
-                            <span class="nav-link-icon"><i class="ti ti-upload fs-2"></i></span>
-                            <span class="nav-link-title">Nộp báo cáo</span>
-                        </span>
-                    </li>
-                    <li class="nav-item">
-                        <span class="nav-link disabled" aria-disabled="true">
-                            <span class="nav-link-icon"><i class="ti ti-award fs-2"></i></span>
-                            <span class="nav-link-title">Kết quả đánh giá</span>
-                        </span>
-                    </li>
-
-                    <?php elseif ($isLecturer || $isDeptHead): ?>
-                    <!-- ======================================== -->
-                    <!-- VAI TRÒ: GIẢNG VIÊN / TRƯỞNG BỘ MÔN       -->
+                    <!-- VAI TRÒ: GIẢNG VIÊN (lecturer)           -->
                     <!-- ======================================== -->
 
                     <li class="nav-item">
@@ -398,29 +425,33 @@ $isTopicsGroup = ($isTopicBrowse || $isTopicCreate || $isTopicPending);
                             <span class="nav-link-title">Thông tin cá nhân</span>
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link<?= $isTopicBrowse ? ' active' : '' ?>"
-                           href="<?= $escape($baseUrl) ?>/topics" <?= $isTopicBrowse ? 'aria-current="page"' : '' ?>>
-                            <span class="nav-link-icon"><i class="ti ti-files fs-2"></i></span>
-                            <span class="nav-link-title">Quản lý đề tài</span>
-                        </a>
+                    <li class="nav-item sidebar-nav-group">
+                        <button class="nav-link sidebar-group-toggle" type="button"
+                                data-bs-toggle="collapse" data-bs-target="#sidebar-topics-menu-lecturer"
+                                aria-controls="sidebar-topics-menu-lecturer" aria-expanded="<?= $isTopicsGroup ? 'true' : 'false' ?>">
+                            <span class="nav-link-icon"><i class="ti ti-file-certificate fs-2"></i></span>
+                            <span class="nav-link-title sidebar-group-title">Quản lý đề tài</span>
+                            <i class="ti ti-chevron-down sidebar-group-chevron ms-auto" aria-hidden="true"></i>
+                        </button>
+                        <div class="collapse<?= $isTopicsGroup ? ' show' : '' ?>" id="sidebar-topics-menu-lecturer">
+                            <ul class="navbar-nav sidebar-submenu">
+                                <li class="nav-item">
+                                    <a class="nav-link<?= $isTopicBrowse ? ' active' : '' ?>"
+                                       href="<?= $escape($baseUrl) ?>/topics" <?= $isTopicBrowse ? 'aria-current="page"' : '' ?>>
+                                        <span class="nav-link-icon"><i class="ti ti-list fs-2"></i></span>
+                                        <span class="nav-link-title">Danh sách đề tài</span>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link<?= $isTopicCreate ? ' active' : '' ?>"
+                                       href="<?= $escape($baseUrl) ?>/topics/create" <?= $isTopicCreate ? 'aria-current="page"' : '' ?>>
+                                        <span class="nav-link-icon"><i class="ti ti-plus fs-2"></i></span>
+                                        <span class="nav-link-title">Đề xuất đề tài</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link<?= $isTopicCreate ? ' active' : '' ?>"
-                           href="<?= $escape($baseUrl) ?>/topics/create" <?= $isTopicCreate ? 'aria-current="page"' : '' ?>>
-                            <span class="nav-link-icon"><i class="ti ti-plus fs-2"></i></span>
-                            <span class="nav-link-title">Đề xuất đề tài</span>
-                        </a>
-                    </li>
-                    <?php if ($isDeptHead): ?>
-                    <li class="nav-item">
-                        <a class="nav-link<?= $isTopicPending ? ' active' : '' ?>"
-                           href="<?= $escape($baseUrl) ?>/topics/pending" <?= $isTopicPending ? 'aria-current="page"' : '' ?>>
-                            <span class="nav-link-icon"><i class="ti ti-checklist fs-2"></i></span>
-                            <span class="nav-link-title">Đề tài chờ duyệt</span>
-                        </a>
-                    </li>
-                    <?php endif; ?>
                     <li class="nav-item">
                         <span class="nav-link disabled" aria-disabled="true">
                             <span class="nav-link-icon"><i class="ti ti-book fs-2"></i></span>
@@ -431,6 +462,102 @@ $isTopicsGroup = ($isTopicBrowse || $isTopicCreate || $isTopicPending);
                         <span class="nav-link disabled" aria-disabled="true">
                             <span class="nav-link-icon"><i class="ti ti-list-check fs-2"></i></span>
                             <span class="nav-link-title">Theo dõi sinh viên</span>
+                        </span>
+                    </li>
+
+                    <?php elseif ($isStudent): ?>
+                    <!-- ======================================== -->
+                    <!-- VAI TRÒ: SINH VIÊN (student)             -->
+                    <!-- ======================================== -->
+
+                    <!-- 1. Bảng điều khiển -->
+                    <li class="nav-item">
+                        <a class="nav-link<?= $isDashboard ? ' active' : '' ?>"
+                           href="<?= $escape($baseUrl) ?>/dashboard"
+                           <?= $isDashboard ? 'aria-current="page"' : '' ?>>
+                            <span class="nav-link-icon"><i class="ti ti-dashboard fs-2"></i></span>
+                            <span class="nav-link-title">Bảng điều khiển</span>
+                        </a>
+                    </li>
+
+                    <!-- 2. Thông tin cá nhân -->
+                    <li class="nav-item">
+                        <a class="nav-link<?= $isProfile ? ' active' : '' ?>"
+                           href="<?= $escape($baseUrl) ?>/profile"
+                           <?= $isProfile ? 'aria-current="page"' : '' ?>>
+                            <span class="nav-link-icon"><i class="ti ti-user-circle fs-2"></i></span>
+                            <span class="nav-link-title">Thông tin cá nhân</span>
+                        </a>
+                    </li>
+
+                    <!-- 3. Quản lý đề tài (chỉ mục con sinh viên được xem) -->
+                    <li class="nav-item sidebar-nav-group">
+                        <button class="nav-link sidebar-group-toggle" type="button"
+                                data-bs-toggle="collapse" data-bs-target="#sidebar-topics-menu-student"
+                                aria-controls="sidebar-topics-menu-student" aria-expanded="<?= $isTopicsGroup ? 'true' : 'false' ?>">
+                            <span class="nav-link-icon"><i class="ti ti-file-certificate fs-2"></i></span>
+                            <span class="nav-link-title sidebar-group-title">Quản lý đề tài</span>
+                            <i class="ti ti-chevron-down sidebar-group-chevron ms-auto" aria-hidden="true"></i>
+                        </button>
+                        <div class="collapse<?= $isTopicsGroup ? ' show' : '' ?>" id="sidebar-topics-menu-student">
+                            <ul class="navbar-nav sidebar-submenu">
+                                <li class="nav-item">
+                                    <a class="nav-link<?= $isTopicBrowse ? ' active' : '' ?>"
+                                       href="<?= $escape($baseUrl) ?>/topics" <?= $isTopicBrowse ? 'aria-current="page"' : '' ?>>
+                                        <span class="nav-link-icon"><i class="ti ti-list fs-2"></i></span>
+                                        <span class="nav-link-title">Danh sách đề tài</span>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link<?= $isTopicCreate ? ' active' : '' ?>"
+                                       href="<?= $escape($baseUrl) ?>/topics/create" <?= $isTopicCreate ? 'aria-current="page"' : '' ?>>
+                                        <span class="nav-link-icon"><i class="ti ti-plus fs-2"></i></span>
+                                        <span class="nav-link-title">Đề xuất đề tài</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    </li>
+
+                    <!-- 4. Đăng ký nguyện vọng (Menu chính độc lập) -->
+                    <li class="nav-item">
+                        <a class="nav-link<?= $isWishes ? ' active' : '' ?>"
+                           href="<?= $escape($baseUrl) ?>/wishes"
+                           <?= $isWishes ? 'aria-current="page"' : '' ?>>
+                            <span class="nav-link-icon"><i class="ti ti-list-numbers ti-list-ordered fs-2"></i></span>
+                            <span class="nav-link-title">Đăng ký nguyện vọng</span>
+                        </a>
+                    </li>
+
+                    <!-- 5. Xem đợt thực tập -->
+                    <li class="nav-item">
+                        <span class="nav-link disabled" aria-disabled="true">
+                            <span class="nav-link-icon"><i class="ti ti-calendar-time fs-2"></i></span>
+                            <span class="nav-link-title">Xem đợt thực tập</span>
+                        </span>
+                    </li>
+
+                    <!-- 6. Theo dõi tiến độ -->
+                    <li class="nav-item">
+                        <span class="nav-link disabled" aria-disabled="true">
+                            <span class="nav-link-icon"><i class="ti ti-list-check fs-2"></i></span>
+                            <span class="nav-link-title">Theo dõi tiến độ</span>
+                        </span>
+                    </li>
+
+                    <!-- 7. Nộp báo cáo -->
+                    <li class="nav-item">
+                        <span class="nav-link disabled" aria-disabled="true">
+                            <span class="nav-link-icon"><i class="ti ti-upload fs-2"></i></span>
+                            <span class="nav-link-title">Nộp báo cáo</span>
+                        </span>
+                    </li>
+
+                    <!-- 8. Kết quả đánh giá -->
+                    <li class="nav-item">
+                        <span class="nav-link disabled" aria-disabled="true">
+                            <span class="nav-link-icon"><i class="ti ti-award fs-2"></i></span>
+                            <span class="nav-link-title">Kết quả đánh giá</span>
                         </span>
                     </li>
 
