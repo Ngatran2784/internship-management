@@ -31,6 +31,7 @@ use App\Controllers\UserController;
 use App\Controllers\InternshipPeriodController;
 use App\Controllers\DashboardController;
 use App\Controllers\TopicController;
+use App\Controllers\TopicApprovalController;
 
 // 2. KHỞI TẠO ROUTER
 $router = new Router();
@@ -100,6 +101,13 @@ $router->get('/topics/detail',  [TopicController::class, 'show']);
 $router->get('/topics/edit',    [TopicController::class, 'edit']);
 $router->post('/topics/update', [TopicController::class, 'update']);
 $router->post('/topics/edit',   [TopicController::class, 'update']);
+
+// --- Xét duyệt đề tài ---
+$router->get('/topics/pending',  [TopicApprovalController::class, 'pending']);
+$router->get('/topics/history',  [TopicApprovalController::class, 'history']);
+$router->post('/topics/submit',  [TopicApprovalController::class, 'submit']);
+$router->post('/topics/approve', [TopicApprovalController::class, 'approve']);
+$router->post('/topics/reject',  [TopicApprovalController::class, 'reject']);
 
 // Hỗ trợ alias trực tiếp /topics/{id} sang xem chi tiết đề tài
 if (preg_match('#/topics/(\d+)$#', $reqPath, $topicMatches)) {
