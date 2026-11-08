@@ -114,6 +114,8 @@ t('Khóa ngoại `proposer_id` tham chiếu đến `users`', isset($fks['propose
 $pdo->beginTransaction();
 
 try {
+    $approvedTopicBaseline = Topic::approvedCountsByType();
+
     // Chuẩn bị dữ liệu mẫu phục vụ kiểm thử (1 đợt, 2 user)
     $testPeriodId = InternshipPeriod::create([
         'code'        => 'TEST-PERIOD-SP3',
@@ -289,6 +291,27 @@ try {
         'status'       => Topic::STATUS_APPROVED,
     ]);
 
+    $approvedTopicCounts = Topic::approvedCountsByType();
+    t(
+        'Thống kê dashboard đếm đề tài approved theo đúng loại',
+        $approvedTopicCounts[Topic::TYPE_GRADUATION_PROJECT] === $approvedTopicBaseline[Topic::TYPE_GRADUATION_PROJECT] + 1
+            && $approvedTopicCounts[Topic::TYPE_INTERNSHIP] === $approvedTopicBaseline[Topic::TYPE_INTERNSHIP]
+    );
+
+    Topic::update($topicId1, ['status' => Topic::STATUS_APPROVED]);
+    $approvedTopicCounts = Topic::approvedCountsByType();
+    t(
+        'Phê duyệt đề tài thực tập cập nhật thống kê đúng loại',
+        $approvedTopicCounts[Topic::TYPE_INTERNSHIP] === $approvedTopicBaseline[Topic::TYPE_INTERNSHIP] + 1
+    );
+
+    Topic::update($topicId1, ['status' => Topic::STATUS_REJECTED]);
+    $approvedTopicCounts = Topic::approvedCountsByType();
+    t(
+        'Từ chối đề tài loại đề tài ra khỏi thống kê approved',
+        $approvedTopicCounts[Topic::TYPE_INTERNSHIP] === $approvedTopicBaseline[Topic::TYPE_INTERNSHIP]
+    );
+
     $allTopics = Topic::all();
     t('Lấy danh sách all() trả về đầy đủ các đề tài vừa tạo', count($allTopics) >= 2);
 
@@ -314,6 +337,31 @@ try {
 
     $filteredByKw = Topic::all(['keyword' => 'Học máy']);
     t('Tìm kiếm đề tài theo từ khóa hoạt động chính xác', count($filteredByKw) >= 1 && $filteredByKw[0]['code'] === 'TEST-DA-002');
+
+    $visibleToUser = Topic::all(['visible_to' => $testUserId1]);
+    $allVisibleToUser = true;
+    foreach ($visibleToUser as $visibleTopic) {
+        if ($visibleTopic['status'] !== Topic::STATUS_APPROVED
+            && (int)$visibleTopic['proposer_id'] !== $testUserId1) {
+            $allVisibleToUser = false;
+            break;
+        }
+    }
+    t('Giới hạn danh sách nhân sự: chỉ hiện đề tài đã duyệt hoặc của người đề xuất', $allVisibleToUser);
+
+    $studentVisible = Topic::all(['student_visible' => true]);
+    $allStudentVisible = true;
+    foreach ($studentVisible as $visibleTopic) {
+        if ($visibleTopic['status'] !== Topic::STATUS_APPROVED || $visibleTopic['period_status'] !== 'active') {
+            $allStudentVisible = false;
+            break;
+        }
+    }
+    t('Giới hạn sinh viên: chỉ đề tài đã duyệt trong đợt đang mở', $allStudentVisible);
+
+    $topicPage = Topic::paginate(['period_id' => $testPeriodId], 1, 1);
+    t('Phân trang trả đúng 1 dòng và tổng số sau lọc', count($topicPage['items']) === 1 && $topicPage['total'] >= 2);
+    t('Phân trang tính đúng số trang', $topicPage['pages'] === (int)ceil($topicPage['total'] / $topicPage['perPage']));
 
     // --- 8. KIỂM THỬ PHÂN QUYỀN CHỈNH SỬA (canEdit) ---
     // A. Quản trị viên (admin) và Phòng đào tạo (training_dept) được sửa mọi đề tài

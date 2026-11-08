@@ -318,3 +318,89 @@ a:hover {
   background-color: #fce8e8 !important;
   color: #d63939 !important;
 }
+
+/* Đề tài: đồng bộ chiều cao các bộ lọc và nút thao tác trên một hàng rộng */
+.topic-filter-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: end;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.topic-filter-field {
+  min-width: 0;
+}
+
+.topic-filter-field .form-label {
+  margin-bottom: 0.35rem;
+}
+
+.topic-filter-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.topic-filter-actions .btn,
+.topic-propose-button {
+  white-space: nowrap;
+}
+
+.topic-propose-button {
+  justify-self: start;
+}
+
+@media (min-width: 576px) {
+  .topic-filter-toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .topic-filter-period,
+  .topic-filter-keyword,
+  .topic-filter-actions {
+    grid-column: span 2;
+  }
+}
+
+@media (min-width: 1200px) {
+  .topic-filter-toolbar {
+    grid-template-columns:
+      minmax(11.5rem, 1.8fr)
+      minmax(8rem, 1fr)
+      minmax(9rem, 1.2fr)
+      minmax(9rem, 1.4fr)
+      auto
+      auto;
+  }
+
+  .topic-filter-period,
+  .topic-filter-status,
+  .topic-filter-type,
+  .topic-filter-keyword,
+  .topic-filter-actions,
+  .topic-propose-button {
+    grid-column: auto;
+  }
+
+  .topic-filter-without-status {
+    grid-template-columns:
+      minmax(13rem, 2fr)
+      minmax(10rem, 1.5fr)
+      minmax(10rem, 1.5fr)
+      auto
+      auto;
+  }
+
+  .topic-filter-without-status .topic-filter-period,
+  .topic-filter-without-status .topic-filter-type,
+  .topic-filter-without-status .topic-filter-keyword,
+  .topic-filter-without-status .topic-filter-actions,
+  .topic-filter-without-status .topic-propose-button {
+    grid-column: auto;
+  }
+
+  .topic-propose-button {
+    justify-self: end;
+  }
+}

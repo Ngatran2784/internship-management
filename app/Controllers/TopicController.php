@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Core\Controller;
 use App\Models\Topic;
 use App\Models\InternshipPeriod;
+use App\Models\TopicApproval;
 use InvalidArgumentException;
 use Throwable;
 
@@ -44,19 +45,31 @@ class TopicController extends Controller
         // Phân quyền dữ liệu theo vai trò
         $isAdminOrTraining = in_array('admin', $userRoles, true) || in_array('training_dept', $userRoles, true);
         $isStudent         = in_array('student', $userRoles, true) && !$isAdminOrTraining;
+        $isProposerRole     = (bool)array_intersect(['department_head', 'lecturer', 'enterprise'], $userRoles);
 
-        // Sinh viên thông thường chỉ xem danh sách đề tài đã được duyệt
-        if ($isStudent && empty($filters['status'])) {
+        if ($isStudent && !$isProposerRole) {
             $filters['status'] = Topic::STATUS_APPROVED;
+            $filters['student_visible'] = true;
+        } elseif (!$isAdminOrTraining) {
+            if ($isProposerRole) {
+                $filters['visible_to'] = $userId;
+            } else {
+                $filters['deny_visibility'] = true;
+            }
         }
 
         try {
-            $topics = Topic::all($filters);
-            $periods = InternshipPeriod::all();
+            $page = filter_var($_GET['page'] ?? 1, FILTER_VALIDATE_INT);
+            $pagination = Topic::paginate($filters, $page && $page > 0 ? $page : 1);
+            $topics = $pagination['items'];
+            $periods = $isStudent && !$isProposerRole
+                ? InternshipPeriod::all(['status' => InternshipPeriod::STATUS_ACTIVE])
+                : InternshipPeriod::all();
         } catch (Throwable $e) {
             error_log('TopicController index error: ' . $e->getMessage());
             $topics  = [];
             $periods = [];
+            $pagination = ['total' => 0, 'page' => 1, 'pages' => 1, 'perPage' => 15];
             AuthController::setFlash('error', 'Không thể tải danh sách đề tài. Vui lòng thử lại sau.');
         }
 
@@ -64,6 +77,7 @@ class TopicController extends Controller
             'topics'             => $topics,
             'periods'            => $periods,
             'filters'            => $filters,
+            'pagination'         => $pagination,
             'statusLabels'       => Topic::STATUS_LABELS,
             'typeLabels'         => Topic::TYPE_LABELS,
             'statusBadges'       => Topic::STATUS_BADGES,
@@ -107,11 +121,22 @@ class TopicController extends Controller
 
         $userId    = (int)($_SESSION['user_id'] ?? 0);
         $userRoles = AuthController::roles();
+        if (!Topic::canView($topic, $userId, $userRoles)) {
+            AuthController::setFlash('error', 'Bạn không có quyền xem đề tài này.');
+            if ($this->wantsJson()) {
+                $this->sendJson(['ok' => false, 'error' => 'Bạn không có quyền xem đề tài này.'], 403);
+                return;
+            }
+            AuthController::go('/topics');
+        }
         $canEdit   = Topic::canEdit($topic, $userId, $userRoles);
-
+        $canSubmit = TopicApproval::canSubmit($topic, $userId, $userRoles)
+            && ($topic['period_status'] ?? null) !== InternshipPeriod::STATUS_CLOSED;
         $this->respond('topics/show', [
             'topic'        => $topic,
             'canEdit'      => $canEdit,
+            'canSubmit'    => $canSubmit,
+            'canReview'    => $canReview,
             'statusLabels' => Topic::STATUS_LABELS,
             'typeLabels'   => Topic::TYPE_LABELS,
             'statusBadges' => Topic::STATUS_BADGES,
@@ -172,6 +197,11 @@ class TopicController extends Controller
             AuthController::go('/topics/create');
         }
 
+        if (!AuthController::hasRole('admin', 'training_dept', 'department_head', 'lecturer', 'enterprise', 'student')) {
+            AuthController::setFlash('error', 'Bạn không có quyền tạo hoặc đề xuất đề tài.');
+            AuthController::go('/topics');
+        }
+
         if (!AuthController::verifyCsrf()) {
             AuthController::setFlash('error', 'Phiên làm việc hết hạn hoặc token CSRF không hợp lệ. Vui lòng thử lại.');
             if ($this->wantsJson()) {
@@ -201,17 +231,6 @@ class TopicController extends Controller
             }
         }
 
-        // Trạng thái ban đầu
-        $status = Topic::STATUS_DRAFT;
-        if (!empty($_POST['status']) && in_array($_POST['status'], Topic::ALLOWED_STATUSES, true)) {
-            // Chỉ admin/phòng đào tạo mới được gán thẳng approved
-            if ($_POST['status'] === Topic::STATUS_APPROVED && !in_array('admin', $userRoles, true) && !in_array('training_dept', $userRoles, true)) {
-                $status = Topic::STATUS_PENDING;
-            } else {
-                $status = $_POST['status'];
-            }
-        }
-
         $data = [
             'code'         => $code,
             'name'         => $name,
@@ -220,7 +239,7 @@ class TopicController extends Controller
             'period_id'    => $periodId,
             'proposer_id'  => $proposerId,
             'max_students' => $maxStudents,
-            'status'       => $status,
+            'status'       => Topic::STATUS_DRAFT,
         ];
 
         // Kiểm tra hợp lệ dữ liệu
@@ -265,7 +284,7 @@ class TopicController extends Controller
             AuthController::go('/topics/create');
         } catch (Throwable $e) {
             error_log('TopicController store error: ' . $e->getMessage());
-            AuthController::setFlash('error', 'Lỗi hệ thống khi lưu đề tài: ' . $e->getMessage());
+            AuthController::setFlash('error', 'Lỗi hệ thống khi lưu đề tài. Vui lòng thử lại sau.');
 
             if ($this->wantsJson()) {
                 $this->sendJson(['ok' => false, 'error' => 'Lỗi hệ thống khi lưu đề tài.'], 500);
@@ -379,17 +398,6 @@ class TopicController extends Controller
         $periodId    = filter_var($_POST['period_id'] ?? null, FILTER_VALIDATE_INT) ?: (int)$topic['period_id'];
         $maxStudents = filter_var($_POST['max_students'] ?? null, FILTER_VALIDATE_INT) ?: (int)$topic['max_students'];
         
-        // Trạng thái khi người đề xuất cập nhật: nếu đang draft/rejected giữ nguyên hoặc cho phép chuyển pending
-        $status = $topic['status'];
-        if (!empty($_POST['status']) && in_array($_POST['status'], Topic::ALLOWED_STATUSES, true)) {
-            // Chỉ admin/phòng đào tạo mới gán được approved
-            if ($_POST['status'] === Topic::STATUS_APPROVED && !in_array('admin', $userRoles, true) && !in_array('training_dept', $userRoles, true)) {
-                $status = Topic::STATUS_PENDING;
-            } else {
-                $status = $_POST['status'];
-            }
-        }
-
         $data = [
             'code'         => $code,
             'name'         => $name,
@@ -397,7 +405,7 @@ class TopicController extends Controller
             'type'         => $type,
             'period_id'    => $periodId,
             'max_students' => $maxStudents,
-            'status'       => $status,
+            'status'       => $topic['status'],
         ];
 
         $errors = Topic::validate($data, true, $id);
@@ -441,7 +449,7 @@ class TopicController extends Controller
             AuthController::go("/topics/edit?id={$id}");
         } catch (Throwable $e) {
             error_log('TopicController update error: ' . $e->getMessage());
-            AuthController::setFlash('error', 'Lỗi hệ thống khi cập nhật đề tài: ' . $e->getMessage());
+            AuthController::setFlash('error', 'Lỗi hệ thống khi cập nhật đề tài. Vui lòng thử lại sau.');
 
             if ($this->wantsJson()) {
                 $this->sendJson(['ok' => false, 'error' => 'Lỗi hệ thống khi cập nhật đề tài.'], 500);

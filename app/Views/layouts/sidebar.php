@@ -44,6 +44,12 @@ $isUsersGroup = ($isUserList || $isUserCreate || $isProfile || str_starts_with($
 $isPeriodList   = ($currentRoute === '/periods' || $currentRoute === '/periods/detail' || $currentRoute === '/periods/edit');
 $isPeriodCreate = ($currentRoute === '/periods/create');
 $isPeriodsGroup = ($isPeriodList || $isPeriodCreate || str_starts_with($currentRoute, '/periods'));
+
+// Nhóm Đề tài: giữ duy nhất một mục active trên mỗi route.
+$isTopicCreate = ($currentRoute === '/topics/create');
+$isTopicPending = ($currentRoute === '/topics/pending');
+$isTopicBrowse = (str_starts_with($currentRoute, '/topics') && !$isTopicCreate && !$isTopicPending);
+$isTopicsGroup = ($isTopicBrowse || $isTopicCreate || $isTopicPending);
 ?>
 <aside class="navbar navbar-vertical navbar-expand-lg app-sidebar" data-bs-theme="dark">
     <div class="container-fluid">
@@ -165,11 +171,39 @@ $isPeriodsGroup = ($isPeriodList || $isPeriodCreate || str_starts_with($currentR
                     </li>
 
                     <!-- 5. Quản lý, phê duyệt đề tài -->
-                    <li class="nav-item">
-                        <span class="nav-link disabled" aria-disabled="true">
+                    <li class="nav-item sidebar-nav-group">
+                        <button class="nav-link sidebar-group-toggle" type="button"
+                                data-bs-toggle="collapse" data-bs-target="#sidebar-topics-menu"
+                                aria-controls="sidebar-topics-menu" aria-expanded="<?= $isTopicsGroup ? 'true' : 'false' ?>">
                             <span class="nav-link-icon"><i class="ti ti-file-certificate fs-2"></i></span>
-                            <span class="nav-link-title">Quản lý, phê duyệt đề tài</span>
-                        </span>
+                            <span class="nav-link-title sidebar-group-title">Quản lý đề tài</span>
+                            <i class="ti ti-chevron-down sidebar-group-chevron ms-auto" aria-hidden="true"></i>
+                        </button>
+                        <div class="collapse<?= $isTopicsGroup ? ' show' : '' ?>" id="sidebar-topics-menu">
+                            <ul class="navbar-nav sidebar-submenu">
+                                <li class="nav-item">
+                                    <a class="nav-link<?= $isTopicBrowse ? ' active' : '' ?>"
+                                       href="<?= $escape($baseUrl) ?>/topics" <?= $isTopicBrowse ? 'aria-current="page"' : '' ?>>
+                                        <span class="nav-link-icon"><i class="ti ti-list fs-2"></i></span>
+                                        <span class="nav-link-title">Danh sách đề tài</span>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link<?= $isTopicCreate ? ' active' : '' ?>"
+                                       href="<?= $escape($baseUrl) ?>/topics/create" <?= $isTopicCreate ? 'aria-current="page"' : '' ?>>
+                                        <span class="nav-link-icon"><i class="ti ti-plus fs-2"></i></span>
+                                        <span class="nav-link-title">Đề xuất đề tài</span>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link<?= $isTopicPending ? ' active' : '' ?>"
+                                       href="<?= $escape($baseUrl) ?>/topics/pending" <?= $isTopicPending ? 'aria-current="page"' : '' ?>>
+                                        <span class="nav-link-icon"><i class="ti ti-checklist fs-2"></i></span>
+                                        <span class="nav-link-title">Đề tài chờ duyệt</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
                     </li>
 
                     <!-- 6. Phân công đề tài và giảng viên -->
@@ -250,10 +284,25 @@ $isPeriodsGroup = ($isPeriodList || $isPeriodCreate || str_starts_with($currentR
                     </li>
 
                     <li class="nav-item">
-                        <span class="nav-link disabled" aria-disabled="true">
+                        <a class="nav-link<?= $isTopicBrowse ? ' active' : '' ?>"
+                           href="<?= $escape($baseUrl) ?>/topics" <?= $isTopicBrowse ? 'aria-current="page"' : '' ?>>
                             <span class="nav-link-icon"><i class="ti ti-file-certificate fs-2"></i></span>
-                            <span class="nav-link-title">Quản lý, phê duyệt đề tài</span>
-                        </span>
+                            <span class="nav-link-title">Quản lý đề tài</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link<?= $isTopicCreate ? ' active' : '' ?>"
+                           href="<?= $escape($baseUrl) ?>/topics/create" <?= $isTopicCreate ? 'aria-current="page"' : '' ?>>
+                            <span class="nav-link-icon"><i class="ti ti-plus fs-2"></i></span>
+                            <span class="nav-link-title">Đề xuất đề tài</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link<?= $isTopicPending ? ' active' : '' ?>"
+                           href="<?= $escape($baseUrl) ?>/topics/pending" <?= $isTopicPending ? 'aria-current="page"' : '' ?>>
+                            <span class="nav-link-icon"><i class="ti ti-checklist fs-2"></i></span>
+                            <span class="nav-link-title">Đề tài chờ duyệt</span>
+                        </a>
                     </li>
                     <li class="nav-item">
                         <span class="nav-link disabled" aria-disabled="true">
@@ -281,6 +330,20 @@ $isPeriodsGroup = ($isPeriodList || $isPeriodCreate || str_starts_with($currentR
                            <?= $isProfile ? 'aria-current="page"' : '' ?>>
                             <span class="nav-link-icon"><i class="ti ti-user-circle fs-2"></i></span>
                             <span class="nav-link-title">Thông tin cá nhân</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link<?= $isTopicBrowse ? ' active' : '' ?>"
+                           href="<?= $escape($baseUrl) ?>/topics" <?= $isTopicBrowse ? 'aria-current="page"' : '' ?>>
+                            <span class="nav-link-icon"><i class="ti ti-files fs-2"></i></span>
+                            <span class="nav-link-title">Danh sách đề tài</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link<?= $isTopicCreate ? ' active' : '' ?>"
+                           href="<?= $escape($baseUrl) ?>/topics/create" <?= $isTopicCreate ? 'aria-current="page"' : '' ?>>
+                            <span class="nav-link-icon"><i class="ti ti-plus fs-2"></i></span>
+                            <span class="nav-link-title">Đề xuất đề tài</span>
                         </a>
                     </li>
                     <li class="nav-item">
@@ -336,6 +399,29 @@ $isPeriodsGroup = ($isPeriodList || $isPeriodCreate || str_starts_with($currentR
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link<?= $isTopicBrowse ? ' active' : '' ?>"
+                           href="<?= $escape($baseUrl) ?>/topics" <?= $isTopicBrowse ? 'aria-current="page"' : '' ?>>
+                            <span class="nav-link-icon"><i class="ti ti-files fs-2"></i></span>
+                            <span class="nav-link-title">Quản lý đề tài</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link<?= $isTopicCreate ? ' active' : '' ?>"
+                           href="<?= $escape($baseUrl) ?>/topics/create" <?= $isTopicCreate ? 'aria-current="page"' : '' ?>>
+                            <span class="nav-link-icon"><i class="ti ti-plus fs-2"></i></span>
+                            <span class="nav-link-title">Đề xuất đề tài</span>
+                        </a>
+                    </li>
+                    <?php if ($isDeptHead): ?>
+                    <li class="nav-item">
+                        <a class="nav-link<?= $isTopicPending ? ' active' : '' ?>"
+                           href="<?= $escape($baseUrl) ?>/topics/pending" <?= $isTopicPending ? 'aria-current="page"' : '' ?>>
+                            <span class="nav-link-icon"><i class="ti ti-checklist fs-2"></i></span>
+                            <span class="nav-link-title">Đề tài chờ duyệt</span>
+                        </a>
+                    </li>
+                    <?php endif; ?>
+                    <li class="nav-item">
                         <span class="nav-link disabled" aria-disabled="true">
                             <span class="nav-link-icon"><i class="ti ti-book fs-2"></i></span>
                             <span class="nav-link-title">Đề tài hướng dẫn</span>
@@ -367,6 +453,20 @@ $isPeriodsGroup = ($isPeriodList || $isPeriodCreate || str_starts_with($currentR
                            <?= $isProfile ? 'aria-current="page"' : '' ?>>
                             <span class="nav-link-icon"><i class="ti ti-user-circle fs-2"></i></span>
                             <span class="nav-link-title">Thông tin cá nhân</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link<?= $isTopicBrowse ? ' active' : '' ?>"
+                           href="<?= $escape($baseUrl) ?>/topics" <?= $isTopicBrowse ? 'aria-current="page"' : '' ?>>
+                            <span class="nav-link-icon"><i class="ti ti-files fs-2"></i></span>
+                            <span class="nav-link-title">Danh sách đề tài</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link<?= $isTopicCreate ? ' active' : '' ?>"
+                           href="<?= $escape($baseUrl) ?>/topics/create" <?= $isTopicCreate ? 'aria-current="page"' : '' ?>>
+                            <span class="nav-link-icon"><i class="ti ti-plus fs-2"></i></span>
+                            <span class="nav-link-title">Đề xuất đề tài</span>
                         </a>
                     </li>
                     <li class="nav-item">

@@ -30,6 +30,10 @@ $totalPeriods  = $totalPeriods  ?? count($activePeriods);
 $countActive   = $countActive   ?? count($activePeriods);
 $countDraft    = $countDraft    ?? 0;
 $countClosed   = $countClosed   ?? 0;
+$approvedTopicCounts = $approvedTopicCounts ?? [];
+$topicStatsAvailable = $topicStatsAvailable ?? false;
+$approvedGraduationTopics = (int)($approvedTopicCounts['graduation_project'] ?? 0);
+$approvedInternshipTopics = (int)($approvedTopicCounts['internship'] ?? 0);
 ?>
 <div class="container-xl">
     <!-- Thẻ chào mừng cá nhân hóa theo vai trò thực tế từ Session -->
@@ -83,8 +87,15 @@ $countClosed   = $countClosed   ?? 0;
             <section class="card card-sm h-100">
                 <div class="card-body py-2 dashboard-stat-body">
                     <div class="subheader text-secondary">Đề tài đồ án</div>
-                    <div class="h3 my-1 text-secondary">Chưa có dữ liệu</div>
-                    <div class="text-secondary small"><i class="ti ti-info-circle me-1"></i>Chưa có đề tài nào được duyệt</div>
+                    <?php if ($topicStatsAvailable): ?>
+                        <div class="h3 my-1"><?= $approvedGraduationTopics > 0 ? number_format($approvedGraduationTopics) : 'Chưa có dữ liệu' ?></div>
+                        <div class="text-secondary small">
+                            <i class="ti ti-check me-1"></i><?= number_format($approvedInternshipTopics) ?> đề tài thực tập đã duyệt
+                        </div>
+                    <?php else: ?>
+                        <div class="h3 my-1 text-secondary">Không thể tải dữ liệu</div>
+                        <div class="text-secondary small"><i class="ti ti-alert-circle me-1"></i>Vui lòng thử lại sau</div>
+                    <?php endif; ?>
                 </div>
             </section>
         </div>

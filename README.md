@@ -217,10 +217,13 @@ C:\xampp\php\php.exe tests/test_user_management.php
 # Kiểm tra Quản lý Đợt thực tập/đồ án (39/39 PASS):
 C:\xampp\php\php.exe tests/test_internship_periods.php
 
-# Kiểm tra Quản lý Đề tài (46/46 PASS):
+# Kiểm tra Quản lý Đề tài (50/50 PASS):
 C:\xampp\php\php.exe tests/test_topics.php
 
-# Kiểm tra Giao diện Sidebar & Quyền hạn (48/48 PASS):
+# Kiểm tra quyền truy cập đề tài (13/13 PASS):
+C:\xampp\php\php.exe tests/test_topic_access.php
+
+# Kiểm tra Giao diện Sidebar & Quyền hạn (58/58 PASS):
 C:\xampp\php\php.exe tests/test_sidebar.php
 
 # Kiểm tra Ảnh đại diện người dùng (26/26 PASS):
@@ -289,7 +292,7 @@ flowchart LR
 - [ ] Hoàn thiện giao diện Hồ sơ cá nhân (`app/Views/users/profile.php`): cập nhật thông tin liên hệ, đổi mật khẩu an toàn.
 - [ ] Cơ chế phân trang (Pagination), tìm kiếm theo họ tên/mã số và lọc theo vai trò.
 
-### Sprint 3: Quản lý Đợt thực tập/Đồ án & Backend Quản lý Đề tài
+### Sprint 3: Quản lý Đợt thực tập/Đồ án & Quản lý Đề tài
 - [x] Thiết kế chuẩn hóa bảng `internship_periods` và hoàn thiện CRUD quản lý đợt thực tập/đồ án.
 - [x] Thiết kế CSDL bảng `topics` (`database/migrations/create_topics_table.sql` & tích hợp `schema.sql`).
 - [x] Xây dựng Model `Topic.php` hỗ trợ đầy đủ bộ lọc, tìm kiếm, kiểm tra ràng buộc, mã đề tài duy nhất và phân quyền `canEdit()`.
@@ -297,9 +300,10 @@ flowchart LR
 - [x] Đăng ký đầy đủ các route quản lý đề tài trong Front Controller `public/index.php`.
 - [x] Xây dựng bộ dữ liệu mẫu 10 đề tài thực tập & đồ án an toàn, idempotent (`database/seeds/topics.sql`).
 - [x] Viết tài liệu hợp đồng kỹ thuật và bàn giao module (`docs/topic-module-contract.md`).
-- [x] Xây dựng bộ kiểm thử tự động 46 test cases đạt kết quả 100% PASS (`tests/test_topics.php`).
-- [ ] Xây dựng giao diện người dùng Frontend (`app/Views/topics/` - Đang triển khai song song).
-- [ ] Phân hệ phê duyệt và thẩm định đề tài của Hội đồng / Trưởng bộ môn.
+- [x] Xây dựng bộ kiểm thử tự động 50 test cases đạt kết quả 100% PASS (`tests/test_topics.php`).
+- [x] Xây dựng giao diện danh sách, tạo, sửa và chi tiết đề tài (`app/Views/topics/`).
+- [x] Hoàn thiện gửi duyệt, phê duyệt, từ chối và lịch sử xét duyệt đề tài.
+- [x] Bổ sung menu đề tài theo vai trò và trạng thái route.
 
 ### Sprint 4: Đăng ký Nguyện vọng & Ghép cặp / Phân công Giảng viên
 - [ ] Sinh viên tra cứu danh mục đề tài đang mở và đăng ký nguyện vọng ưu tiên (Nguyện vọng 1, 2, 3).

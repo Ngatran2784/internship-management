@@ -121,6 +121,19 @@ preg_match_all('/class="[^"]*nav-link[^"]*\bactive\b[^"]*"/', $sbPeriodEdit, $mP
 t("Route /periods/edit: Có duy nhất 1 mục active", count($mPeriodEdit[0]) === 1);
 t("Route /periods/edit: Active mục Danh sách đợt tương ứng", str_contains($sbPeriodEdit, 'href="/CNPM/internship-management/public/periods"') && str_contains($sbPeriodEdit, 'aria-current="page"'));
 
+// Route topics
+foreach ([
+    ['/topics', '/topics'],
+    ['/topics/create', '/topics/create'],
+    ['/topics/pending', '/topics/pending'],
+    ['/topics/detail?id=5', '/topics'],
+] as [$request, $activeHref]) {
+    $sbTopic = renderSidebarForTest($adminRoles, '/CNPM/internship-management/public' . $request, 'topics');
+    preg_match_all('/class="[^"]*nav-link[^"]*\bactive\b[^"]*"/', $sbTopic, $matches);
+    t("Route {$request}: Có duy nhất 1 mục active", count($matches[0]) === 1);
+    t("Route {$request}: Active đúng mục đề tài", str_contains($sbTopic, 'href="/CNPM/internship-management/public' . $activeHref . '"') && str_contains($sbTopic, 'aria-current="page"'));
+}
+
 // ── 4. Kiểm tra đầy đủ 8 nhóm menu hệ thống trong Admin theo đúng danh sách ──
 t("Nhóm 1: Bảng điều khiển tồn tại", str_contains($sbDash, 'Bảng điều khiển'));
 t("Nhóm 2: Quản lý người dùng tồn tại", str_contains($sbDash, 'Quản lý người dùng'));
@@ -137,8 +150,11 @@ t("Nhóm 3 có menu con: Danh sách đợt, Tạo đợt mới",
 t("Nhóm 4: Quản lý vai trò và phân quyền tồn tại ở trạng thái disabled", 
     str_contains($sbDash, 'Quản lý vai trò và phân quyền') && str_contains($sbDash, 'aria-disabled="true"')
 );
-t("Nhóm 5: Quản lý, phê duyệt đề tài tồn tại ở trạng thái disabled", 
-    str_contains($sbDash, 'Quản lý, phê duyệt đề tài') && str_contains($sbDash, 'aria-disabled="true"')
+t("Nhóm 5: Quản lý đề tài có danh sách, đề xuất và chờ duyệt",
+    str_contains($sbDash, 'Quản lý đề tài') &&
+    str_contains($sbDash, 'href="/CNPM/internship-management/public/topics"') &&
+    str_contains($sbDash, 'href="/CNPM/internship-management/public/topics/create"') &&
+    str_contains($sbDash, 'href="/CNPM/internship-management/public/topics/pending"')
 );
 t("Nhóm 6: Phân công đề tài và giảng viên tồn tại ở trạng thái disabled", 
     str_contains($sbDash, 'Phân công đề tài và giảng viên') && str_contains($sbDash, 'aria-disabled="true"')
@@ -161,6 +177,7 @@ $sbStudent = renderSidebarForTest(['student'], '/CNPM/internship-management/publ
 t("Sinh viên: Không thấy menu Quản lý người dùng", !str_contains($sbStudent, 'Quản lý người dùng'));
 t("Sinh viên: Không thấy menu Tạo đợt mới", !str_contains($sbStudent, 'Tạo đợt mới'));
 t("Sinh viên: Có mục Bảng điều khiển active", str_contains($sbStudent, 'Bảng điều khiển'));
+t("Sinh viên: Có danh sách đề tài đã được duyệt", str_contains($sbStudent, 'Danh sách đề tài') && str_contains($sbStudent, 'href="/CNPM/internship-management/public/topics"'));
 t("Sinh viên: Không còn nhãn 'Sắp có'", !str_contains($sbStudent, 'Sắp có'));
 t("Sinh viên: Có các mục nhiệm vụ ở trạng thái disabled chuẩn", str_contains($sbStudent, 'Đăng ký đề tài') && str_contains($sbStudent, 'disabled'));
 
@@ -174,6 +191,7 @@ t("Giảng viên: Có các mục nhiệm vụ giảng dạy disabled", str_conta
 $sbTraining = renderSidebarForTest(['training_dept'], '/CNPM/internship-management/public/periods', 'periods');
 t("Phòng đào tạo: Không thấy menu Quản lý người dùng", !str_contains($sbTraining, 'Quản lý người dùng'));
 t("Phòng đào tạo: Thấy menu Đợt thực tập & đồ án", str_contains($sbTraining, 'Đợt thực tập &amp; đồ án'));
+t("Phòng đào tạo: Có quản lý đề tài và chờ duyệt", str_contains($sbTraining, 'Quản lý đề tài') && str_contains($sbTraining, 'href="/CNPM/internship-management/public/topics/pending"'));
 t("Phòng đào tạo: Không còn tiêu đề 'Chức năng mở rộng' và nhãn 'Sắp có'", 
     !str_contains($sbTraining, 'Chức năng mở rộng') && !str_contains($sbTraining, 'Sắp có')
 );

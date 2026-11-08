@@ -2,7 +2,7 @@
 
 - **Dự án:** Website Quản lý và Theo dõi Tiến độ Thực tập & Đồ án Sinh viên - Trường Đại học Vinh
 - **Phân hệ chức năng:** Quản lý Đề tài thực tập & Đồ án tốt nghiệp
-- **Phạm vi kỹ thuật:** Cơ sở dữ liệu và Backend xử lý nghiệp vụ
+- **Phạm vi kỹ thuật:** Cơ sở dữ liệu, Backend xử lý nghiệp vụ và tích hợp giao diện
 - **Các phân hệ tích hợp liên quan:** Phân hệ Phê duyệt đề tài, Phân hệ Doanh nghiệp, Phân hệ Giao diện Frontend
 - **Tài liệu tham chiếu:** `docs/topic-module-contract.md`
 - **Mã nguồn liên quan:**
@@ -10,7 +10,8 @@
   - Model: `app/Models/Topic.php`
   - Controller: `app/Controllers/TopicController.php`
   - Router: `public/index.php`
-  - Bộ kiểm thử tự động: `tests/test_topics.php` (46 tests PASS)
+  - Giao diện: `app/Views/topics/`
+  - Bộ kiểm thử tự động: `tests/test_topics.php` (50 tests PASS)
 
 ---
 
@@ -205,3 +206,11 @@ Kiến trúc Controller được thiết kế theo phương thức `respond(stri
 2. **Tuân thủ Giao diện:**
    - Giữ nguyên màu chủ đạo xanh navy Đại học Vinh (`#002B55`, `#003B71`) và logo trường tại Header/Sidebar.
    - Sử dụng các lớp CSS Tabler có sẵn (`card`, `table`, `badge`, `form-control`, `btn-primary`, v.v.).
+
+## 9. Ghi chú triển khai giao diện và quyền truy cập
+
+- Danh sách đề tài được phân trang 15 dòng mỗi trang, giữ nguyên bộ lọc khi chuyển trang.
+- `admin` và `training_dept` xem mọi trạng thái; `department_head`, `lecturer`, `enterprise` xem đề tài đã duyệt và đề tài do mình đề xuất; sinh viên chỉ xem đề tài đã duyệt thuộc đợt đang mở. Backend áp dụng các giới hạn này cho cả danh sách và trang chi tiết.
+- Đề tài mới luôn bắt đầu ở trạng thái `draft`. Chỉ workflow `/topics/submit`, `/topics/approve` và `/topics/reject` được phép chuyển trạng thái; cập nhật thông tin đề tài không được bỏ qua lịch sử xét duyệt.
+- Các view `topics/pending.php` và `topics/history.php` hiển thị danh sách chờ duyệt và lịch sử theo hợp đồng `docs/topic-approval-contract.md`.
+- Nghiệp vụ đăng ký đề tài của sinh viên chưa được triển khai: chưa có bảng đăng ký hay quy tắc chọn/hủy/chống trùng. Không tạo màn hình giả hoặc ghi dữ liệu đăng ký trước khi có contract và schema được thống nhất.

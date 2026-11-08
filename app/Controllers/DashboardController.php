@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Core\Controller;
 use App\Models\InternshipPeriod;
+use App\Models\Topic;
 use Throwable;
 
 /**
@@ -35,6 +36,15 @@ class DashboardController extends Controller
         $countDraft    = count($draftPeriods);
         $countClosed   = count($closedPeriods);
 
+        try {
+            $approvedTopicCounts = Topic::approvedCountsByType();
+            $topicStatsAvailable = true;
+        } catch (Throwable $e) {
+            error_log('DashboardController::index error loading topic statistics: ' . $e->getMessage());
+            $approvedTopicCounts = [];
+            $topicStatsAvailable = false;
+        }
+
         $this->render('dashboard/index', [
             'allPeriods'    => $allPeriods,
             'activePeriods' => $activePeriods,
@@ -44,6 +54,8 @@ class DashboardController extends Controller
             'countClosed'   => $countClosed,
             'typeLabels'    => InternshipPeriod::TYPE_LABELS,
             'statusLabels'  => InternshipPeriod::STATUS_LABELS,
+            'approvedTopicCounts' => $approvedTopicCounts,
+            'topicStatsAvailable' => $topicStatsAvailable,
         ]);
     }
 }

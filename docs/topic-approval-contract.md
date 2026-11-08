@@ -95,7 +95,7 @@ Mỗi dòng có nút Duyệt (form POST `/topics/approve`) và nút Từ chối 
 - Nút **Gửi duyệt** (form POST `/topics/submit`): hiện khi `topic.status` là `draft` hoặc `rejected` và người dùng là người đề xuất, `admin` hoặc `training_dept`.
 - Liên kết **Lịch sử xét duyệt** tới `/topics/history?id={id}`.
 
-## 5. Điểm cần thống nhất
-- Vai trò được xét duyệt (`admin`, `training_dept`, `department_head`) và việc ghi lịch sử chỉ cho thao tác duyệt/từ chối.
-- Form sửa đề tài (`/topics/update`) hiện cho `admin`/`training_dept` đặt thẳng `status = approved` mà không ghi `topic_approvals`.
+## 5. Phạm vi cần phối hợp
+- Workflow xét duyệt dùng các vai trò `admin`, `training_dept`, `department_head`; lịch sử được ghi cho mỗi lần duyệt/từ chối.
+- Trạng thái chỉ được đổi qua workflow gửi duyệt/xét duyệt; form sửa thông tin đề tài giữ nguyên trạng thái hiện tại để không bỏ qua lịch sử `topic_approvals`.
 - Nghiệp vụ đăng ký đề tài của sinh viên chưa triển khai, chờ thống nhất bảng dữ liệu và quy tắc.

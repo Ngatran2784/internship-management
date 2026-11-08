@@ -81,8 +81,9 @@ class Topic
     public static function all(array $filters = []): array
     {
         $pdo = Database::getConnection();
+        [$where, $params] = self::buildWhere($filters);
 
-        $sql = 'SELECT 
+        $sql = 'SELECT
                     t.*,
                     p.code AS period_code,
                     p.name AS period_name,
@@ -93,46 +94,151 @@ class Topic
                     u.email AS proposer_email
                 FROM `topics` t
                 INNER JOIN `internship_periods` p ON t.period_id = p.id
-                INNER JOIN `users` u ON t.proposer_id = u.id
-                WHERE 1=1';
+                INNER JOIN `users` u ON t.proposer_id = u.id'
+            . $where . ' ORDER BY t.created_at DESC, t.id DESC';
 
+        if (isset($filters['limit'])) {
+            $limit = max(1, min(100, (int)$filters['limit']));
+            $offset = max(0, (int)($filters['offset'] ?? 0));
+            $sql .= " LIMIT {$limit} OFFSET {$offset}";
+        }
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Lấy một trang đề tài và tổng số kết quả sau lọc.
+     */
+    public static function paginate(array $filters, int $page, int $perPage = 15): array
+    {
+        $page = max(1, $page);
+        $perPage = max(1, min(100, $perPage));
+        [$where, $params] = self::buildWhere($filters);
+        $pdo = Database::getConnection();
+
+        $count = $pdo->prepare(
+            'SELECT COUNT(*) FROM `topics` t
+             INNER JOIN `internship_periods` p ON t.period_id = p.id
+             INNER JOIN `users` u ON t.proposer_id = u.id' . $where
+        );
+        $count->execute($params);
+        $total = (int)$count->fetchColumn();
+        $pages = max(1, (int)ceil($total / $perPage));
+        $page = min($page, $pages);
+
+        $items = self::all(array_merge($filters, [
+            'limit' => $perPage,
+            'offset' => ($page - 1) * $perPage,
+        ]));
+
+        return [
+            'items' => $items,
+            'total' => $total,
+            'page' => $page,
+            'perPage' => $perPage,
+            'pages' => $pages,
+        ];
+    }
+
+    /**
+     * Đếm đề tài đã duyệt theo loại; loại đề tài và trạng thái là hai trường riêng.
+     *
+     * @return array<string, int>
+     */
+    public static function approvedCountsByType(): array
+    {
+        $pdo = Database::getConnection();
+        $stmt = $pdo->prepare(
+            'SELECT `type`, COUNT(*) AS `total`
+               FROM `topics`
+              WHERE `status` = :status
+           GROUP BY `type`'
+        );
+        $stmt->execute(['status' => self::STATUS_APPROVED]);
+
+        $counts = array_fill_keys(self::ALLOWED_TYPES, 0);
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $counts[$row['type']] = (int)$row['total'];
+        }
+
+        return $counts;
+    }
+
+    /**
+     * Tạo phần điều kiện dùng chung cho danh sách và đếm phân trang.
+     */
+    private static function buildWhere(array $filters): array
+    {
+        $where = ' WHERE 1=1';
         $params = [];
 
         if (!empty($filters['period_id']) && (int)$filters['period_id'] > 0) {
-            $sql .= ' AND t.period_id = :period_id';
+            $where .= ' AND t.period_id = :period_id';
             $params['period_id'] = (int)$filters['period_id'];
         }
 
         if (!empty($filters['status']) && in_array($filters['status'], self::ALLOWED_STATUSES, true)) {
-            $sql .= ' AND t.status = :status';
+            $where .= ' AND t.status = :status';
             $params['status'] = $filters['status'];
         }
 
         if (!empty($filters['type']) && in_array($filters['type'], self::ALLOWED_TYPES, true)) {
-            $sql .= ' AND t.type = :type';
+            $where .= ' AND t.type = :type';
             $params['type'] = $filters['type'];
         }
 
         if (!empty($filters['proposer_id']) && (int)$filters['proposer_id'] > 0) {
-            $sql .= ' AND t.proposer_id = :proposer_id';
+            $where .= ' AND t.proposer_id = :proposer_id';
             $params['proposer_id'] = (int)$filters['proposer_id'];
         }
 
         if (!empty($filters['keyword'])) {
             $kw = '%' . trim((string)$filters['keyword']) . '%';
-            $sql .= ' AND (t.code LIKE :kw_code OR t.name LIKE :kw_name OR t.description LIKE :kw_desc OR u.full_name LIKE :kw_user)';
+            $where .= ' AND (t.code LIKE :kw_code OR t.name LIKE :kw_name OR t.description LIKE :kw_desc OR u.full_name LIKE :kw_user)';
             $params['kw_code'] = $kw;
             $params['kw_name'] = $kw;
             $params['kw_desc'] = $kw;
             $params['kw_user'] = $kw;
         }
 
-        $sql .= ' ORDER BY t.created_at DESC, t.id DESC';
+        if (!empty($filters['deny_visibility'])) {
+            $where .= ' AND 1=0';
+        } elseif (!empty($filters['student_visible'])) {
+            $where .= ' AND t.status = :student_status AND p.status = :student_period_status';
+            $params['student_status'] = self::STATUS_APPROVED;
+            $params['student_period_status'] = InternshipPeriod::STATUS_ACTIVE;
+        } elseif (isset($filters['visible_to']) && (int)$filters['visible_to'] > 0) {
+            $where .= ' AND (t.status = :visible_status OR t.proposer_id = :visible_user_id)';
+            $params['visible_status'] = self::STATUS_APPROVED;
+            $params['visible_user_id'] = (int)$filters['visible_to'];
+        }
 
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute($params);
+        return [$where, $params];
+    }
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    /**
+     * Kiểm tra quyền xem một đề tài theo contract phân quyền topics.
+     */
+    public static function canView(array $topic, int $userId, array $userRoles): bool
+    {
+        if (in_array('admin', $userRoles, true) || in_array('training_dept', $userRoles, true)) {
+            return true;
+        }
+
+        if (in_array('student', $userRoles, true)
+            && !array_intersect(['department_head', 'lecturer', 'enterprise'], $userRoles)) {
+            return $topic['status'] === self::STATUS_APPROVED
+                && ($topic['period_status'] ?? null) === InternshipPeriod::STATUS_ACTIVE;
+        }
+
+        if (array_intersect(['department_head', 'lecturer', 'enterprise'], $userRoles)) {
+            return $topic['status'] === self::STATUS_APPROVED || (int)$topic['proposer_id'] === $userId;
+        }
+
+        return false;
     }
 
     /**
