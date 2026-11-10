@@ -33,6 +33,7 @@ use App\Controllers\DashboardController;
 use App\Controllers\TopicController;
 use App\Controllers\TopicApprovalController;
 use App\Controllers\TopicWishController;
+use App\Controllers\TopicAssignmentController;
 
 // 2. KHỞI TẠO ROUTER
 $router = new Router();
@@ -117,6 +118,11 @@ $router->get('/wishes/edit',     [TopicWishController::class, 'create']);
 $router->post('/wishes/save',    [TopicWishController::class, 'save']);
 $router->post('/wishes/update',  [TopicWishController::class, 'save']);
 $router->post('/wishes/delete',  [TopicWishController::class, 'delete']);
+
+// --- Phân công đề tài & giảng viên ---
+$router->get('/assignments',             [TopicAssignmentController::class, 'index']);
+$router->get('/assignments/preview',     [TopicAssignmentController::class, 'preview']);
+$router->post('/assignments/auto-match', [TopicAssignmentController::class, 'autoMatch']);
 
 // Hỗ trợ alias trực tiếp /topics/{id} sang xem chi tiết đề tài
 if (preg_match('#/topics/(\d+)$#', $reqPath, $topicMatches)) {
