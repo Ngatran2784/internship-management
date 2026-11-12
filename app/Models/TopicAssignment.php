@@ -623,4 +623,346 @@ class TopicAssignment
 
         return $stmt->rowCount();
     }
+
+    // =========================================================================
+    // PHÂN CÔNG THỦ CÔNG, XÁC NHẬN VÀ CÔNG BỐ (S4-02, S4-04)
+    // =========================================================================
+
+    /**
+     * Tìm một bản ghi phân công theo ID
+     */
+    public static function findById(int $id): ?array
+    {
+        $pdo  = Database::getConnection();
+        $stmt = $pdo->prepare('SELECT * FROM `topic_assignments` WHERE `id` = :id LIMIT 1');
+        $stmt->execute([':id' => $id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $row === false ? null : $row;
+    }
+
+    /**
+     * Đếm số phân công của đợt theo trạng thái
+     */
+    public static function countByStatus(int $periodId, string $status): int
+    {
+        $pdo  = Database::getConnection();
+        $stmt = $pdo->prepare(
+            'SELECT COUNT(*) FROM `topic_assignments` WHERE `period_id` = :period_id AND `status` = :status'
+        );
+        $stmt->execute([':period_id' => $periodId, ':status' => $status]);
+
+        return (int)$stmt->fetchColumn();
+    }
+
+    /**
+     * Sinh viên đang hoạt động, chưa có phân công (chưa hủy) trong đợt; kèm số nguyện vọng đã nộp
+     */
+    public static function getAssignableStudents(int $periodId): array
+    {
+        $pdo  = Database::getConnection();
+        $stmt = $pdo->prepare(
+            "SELECT u.`id` AS student_id, u.`username` AS student_code, u.`full_name` AS student_name,
+                    (SELECT COUNT(*) FROM `topic_wishes` tw
+                      WHERE tw.`student_id` = u.`id` AND tw.`period_id` = :period_wish) AS wishes_count
+               FROM `users` u
+              WHERE u.`status` = 1
+                AND EXISTS (SELECT 1 FROM `user_roles` ur
+                              INNER JOIN `roles` r ON r.`id` = ur.`role_id`
+                             WHERE ur.`user_id` = u.`id` AND r.`name` = 'student')
+                AND u.`id` NOT IN (SELECT a.`student_id` FROM `topic_assignments` a
+                                    WHERE a.`period_id` = :period_assigned AND a.`status` != 'cancelled')
+           ORDER BY u.`username` ASC"
+        );
+        $stmt->execute([':period_wish' => $periodId, ':period_assigned' => $periodId]);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Đề tài đã duyệt của đợt kèm chỉ tiêu và số sinh viên đã được gán
+     */
+    public static function getApprovedTopicsWithCapacity(int $periodId): array
+    {
+        $pdo  = Database::getConnection();
+        $stmt = $pdo->prepare(
+            "SELECT t.`id`, t.`code`, t.`name`, t.`proposer_id`, u.`full_name` AS proposer_name, t.`max_students`,
+                    (SELECT COUNT(*) FROM `topic_assignments` a
+                      WHERE a.`topic_id` = t.`id` AND a.`period_id` = :period_assigned AND a.`status` != 'cancelled') AS assigned_count
+               FROM `topics` t
+         INNER JOIN `users` u ON u.`id` = t.`proposer_id`
+              WHERE t.`period_id` = :period_topic AND t.`status` = 'approved'
+           ORDER BY t.`code` ASC"
+        );
+        $stmt->execute([':period_assigned' => $periodId, ':period_topic' => $periodId]);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Giảng viên (lecturer, department_head) đang hoạt động kèm số sinh viên đang hướng dẫn trong đợt
+     */
+    public static function getLecturersWithLoad(int $periodId): array
+    {
+        $pdo  = Database::getConnection();
+        $stmt = $pdo->prepare(
+            "SELECT u.`id`, u.`username`, u.`full_name`, u.`email`,
+                    (SELECT COUNT(*) FROM `topic_assignments` a
+                      WHERE a.`lecturer_id` = u.`id` AND a.`period_id` = :period_id AND a.`status` != 'cancelled') AS assigned_count
+               FROM `users` u
+              WHERE u.`status` = 1
+                AND EXISTS (SELECT 1 FROM `user_roles` ur
+                              INNER JOIN `roles` r ON r.`id` = ur.`role_id`
+                             WHERE ur.`user_id` = u.`id` AND r.`name` IN ('lecturer', 'department_head'))
+           ORDER BY u.`full_name` ASC"
+        );
+        $stmt->execute([':period_id' => $periodId]);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Kiểm tra dữ liệu phân công thủ công trước khi lưu (chưa kiểm tra chỉ tiêu: assignManual kiểm tra lại có khóa dòng).
+     *
+     * @return string[] danh sách lỗi, rỗng nếu hợp lệ
+     */
+    public static function validateManual(int $periodId, int $studentId, int $topicId, int $lecturerId): array
+    {
+        $pdo    = Database::getConnection();
+        $errors = [];
+
+        $stmt = $pdo->prepare('SELECT `status` FROM `internship_periods` WHERE `id` = :id');
+        $stmt->execute([':id' => $periodId]);
+        $period = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($period === false) {
+            return ['Đợt thực tập / đồ án không tồn tại.'];
+        }
+        if ($period['status'] === InternshipPeriod::STATUS_CLOSED) {
+            $errors[] = 'Đợt đã kết thúc, không thể phân công.';
+        }
+
+        if (!self::isActiveUserWithRole($studentId, ['student'])) {
+            $errors[] = 'Người được chọn không phải sinh viên hợp lệ (không tồn tại, bị khóa hoặc sai vai trò).';
+        }
+
+        if (!self::isActiveUserWithRole($lecturerId, ['lecturer', 'department_head'])) {
+            $errors[] = 'Người được chọn không phải giảng viên hướng dẫn hợp lệ (không tồn tại, bị khóa hoặc sai vai trò).';
+        }
+
+        $stmt = $pdo->prepare('SELECT `period_id`, `status` FROM `topics` WHERE `id` = :id');
+        $stmt->execute([':id' => $topicId]);
+        $topic = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($topic === false) {
+            $errors[] = 'Đề tài không tồn tại.';
+        } elseif ((int)$topic['period_id'] !== $periodId) {
+            $errors[] = 'Đề tài không thuộc đợt thực tập này.';
+        } elseif ($topic['status'] !== 'approved') {
+            $errors[] = 'Chỉ được phân công vào đề tài đã được phê duyệt.';
+        }
+
+        $existing = self::getByStudent($studentId, $periodId);
+        if ($existing !== null) {
+            $errors[] = 'Sinh viên đã được phân công trong đợt này (trạng thái: '
+                . (self::STATUS_LABELS[$existing['status']] ?? $existing['status'])
+                . '). Hãy hủy phân công cũ trước khi phân công lại.';
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Danh sách xung đột khiến việc xác nhận/công bố không an toàn (đọc lại dữ liệu tại thời điểm gọi).
+     *
+     * @return string[] rỗng nếu không có xung đột
+     */
+    public static function findPublishConflicts(int $periodId, int $maxPerLecturer = 5): array
+    {
+        $pdo       = Database::getConnection();
+        $conflicts = [];
+
+        $stmt = $pdo->prepare('SELECT `status` FROM `internship_periods` WHERE `id` = :id');
+        $stmt->execute([':id' => $periodId]);
+        $period = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($period === false) {
+            return ['Đợt thực tập / đồ án không tồn tại.'];
+        }
+        if ($period['status'] === InternshipPeriod::STATUS_CLOSED) {
+            $conflicts[] = 'Đợt đã kết thúc, không thể công bố kết quả.';
+        }
+
+        $stmt = $pdo->prepare(
+            "SELECT a.`id`, a.`topic_id`, t.`code` AS topic_code, t.`status` AS topic_status, t.`period_id` AS topic_period,
+                    s.`username` AS student_code, s.`status` AS student_status,
+                    l.`full_name` AS lecturer_name, l.`status` AS lecturer_status
+               FROM `topic_assignments` a
+         INNER JOIN `topics` t ON t.`id` = a.`topic_id`
+         INNER JOIN `users` s ON s.`id` = a.`student_id`
+         INNER JOIN `users` l ON l.`id` = a.`lecturer_id`
+              WHERE a.`period_id` = :period_id AND a.`status` != 'cancelled'"
+        );
+        $stmt->execute([':period_id' => $periodId]);
+
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            if ($row['topic_status'] !== 'approved') {
+                $conflicts[] = "Đề tài {$row['topic_code']} không còn ở trạng thái đã duyệt (sinh viên {$row['student_code']}).";
+            }
+            if ((int)$row['topic_period'] !== $periodId) {
+                $conflicts[] = "Đề tài {$row['topic_code']} không thuộc đợt này (sinh viên {$row['student_code']}).";
+            }
+            if ((int)$row['student_status'] !== 1) {
+                $conflicts[] = "Tài khoản sinh viên {$row['student_code']} đang bị khóa.";
+            }
+            if ((int)$row['lecturer_status'] !== 1) {
+                $conflicts[] = "Tài khoản giảng viên {$row['lecturer_name']} đang bị khóa.";
+            }
+        }
+
+        $stmt = $pdo->prepare(
+            "SELECT t.`code`, t.`max_students`, COUNT(*) AS total
+               FROM `topic_assignments` a
+         INNER JOIN `topics` t ON t.`id` = a.`topic_id`
+              WHERE a.`period_id` = :period_id AND a.`status` != 'cancelled'
+           GROUP BY t.`id`, t.`code`, t.`max_students`
+             HAVING COUNT(*) > t.`max_students`"
+        );
+        $stmt->execute([':period_id' => $periodId]);
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $conflicts[] = "Đề tài {$row['code']} vượt chỉ tiêu ({$row['total']}/{$row['max_students']}).";
+        }
+
+        $stmt = $pdo->prepare(
+            "SELECT l.`full_name`, COUNT(*) AS total
+               FROM `topic_assignments` a
+         INNER JOIN `users` l ON l.`id` = a.`lecturer_id`
+              WHERE a.`period_id` = :period_id AND a.`status` != 'cancelled'
+           GROUP BY l.`id`, l.`full_name`
+             HAVING COUNT(*) > :max_per_lecturer"
+        );
+        $stmt->execute([':period_id' => $periodId, ':max_per_lecturer' => $maxPerLecturer]);
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $conflicts[] = "Giảng viên {$row['full_name']} vượt chỉ tiêu hướng dẫn ({$row['total']}/{$maxPerLecturer}).";
+        }
+
+        return $conflicts;
+    }
+
+    /**
+     * Xác nhận và công bố: kiểm tra lại toàn bộ điều kiện rồi chuyển các bản dự thảo của đợt sang published.
+     * Chạy trong một transaction, khóa các bản dự thảo nên gọi lặp hoặc đồng thời sẽ bị từ chối.
+     * Không đụng đến bảng nguyện vọng (topic_wishes).
+     *
+     * @return int số bản ghi đã công bố
+     * @throws RuntimeException khi không còn bản dự thảo nào để công bố (đã công bố trước đó)
+     * @throws InvalidArgumentException khi còn xung đột
+     */
+    public static function publishChecked(int $periodId, int $confirmedBy, int $maxPerLecturer = 5): int
+    {
+        $pdo            = Database::getConnection();
+        $ownTransaction = !$pdo->inTransaction();
+
+        if ($ownTransaction) {
+            $pdo->beginTransaction();
+        }
+
+        try {
+            $stmt = $pdo->prepare(
+                "SELECT `id` FROM `topic_assignments`
+                  WHERE `period_id` = :period_id AND `status` = 'draft' FOR UPDATE"
+            );
+            $stmt->execute([':period_id' => $periodId]);
+            $draftIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+            if (!$draftIds) {
+                throw new RuntimeException('Không có bản dự thảo nào để công bố (có thể đã được công bố trước đó).');
+            }
+
+            $conflicts = self::findPublishConflicts($periodId, $maxPerLecturer);
+            if ($conflicts) {
+                throw new InvalidArgumentException(
+                    'Không thể công bố vì còn xung đột: ' . implode(' ', array_slice($conflicts, 0, 5))
+                    . (count($conflicts) > 5 ? ' (và ' . (count($conflicts) - 5) . ' xung đột khác)' : '')
+                );
+            }
+
+            $published = self::publishPeriodAssignments($periodId, $confirmedBy);
+
+            if ($published !== count($draftIds)) {
+                throw new RuntimeException('Dữ liệu phân công vừa bị thay đổi ở nơi khác, vui lòng tải lại và thử lại.');
+            }
+
+            if ($ownTransaction) {
+                $pdo->commit();
+            }
+
+            return $published;
+        } catch (\Throwable $e) {
+            if ($ownTransaction && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+    }
+
+    /**
+     * Hủy một phân công đang ở trạng thái dự thảo. Phân công đã công bố không được hủy bằng hàm này.
+     *
+     * @throws InvalidArgumentException khi không tồn tại hoặc không ở trạng thái dự thảo
+     */
+    public static function cancelDraft(int $assignmentId, ?string $reason = null): void
+    {
+        $row = self::findById($assignmentId);
+        if ($row === null) {
+            throw new InvalidArgumentException('Phân công không tồn tại.');
+        }
+        if ($row['status'] !== self::STATUS_DRAFT) {
+            throw new InvalidArgumentException(
+                'Chỉ hủy được phân công ở trạng thái Dự thảo. Phân công đã công bố cần rút công bố trước.'
+            );
+        }
+
+        $reason = $reason !== null && trim($reason) !== '' ? mb_substr(trim($reason), 0, 80) : 'Hủy bởi người quản lý';
+
+        $pdo  = Database::getConnection();
+        $stmt = $pdo->prepare(
+            "UPDATE `topic_assignments`
+                SET `status` = 'cancelled',
+                    `notes` = LEFT(CONCAT(COALESCE(`notes`, ''), ' [Hủy: ', :reason, ']'), 255),
+                    `updated_at` = NOW()
+              WHERE `id` = :id AND `status` = 'draft'"
+        );
+        $stmt->execute([':reason' => $reason, ':id' => $assignmentId]);
+
+        if ($stmt->rowCount() === 0) {
+            throw new InvalidArgumentException('Phân công vừa được thay đổi ở nơi khác, vui lòng tải lại trang.');
+        }
+    }
+
+    /**
+     * Người dùng có tồn tại, đang hoạt động và có ít nhất một trong các vai trò
+     *
+     * @param string[] $roleNames
+     */
+    private static function isActiveUserWithRole(int $userId, array $roleNames): bool
+    {
+        $pdo    = Database::getConnection();
+        $params = [':user_id' => $userId];
+        $marks  = [];
+
+        foreach (array_values($roleNames) as $i => $name) {
+            $marks[] = ':role' . $i;
+            $params[':role' . $i] = $name;
+        }
+
+        $stmt = $pdo->prepare(
+            'SELECT 1 FROM `users` u
+              WHERE u.`id` = :user_id AND u.`status` = 1
+                AND EXISTS (SELECT 1 FROM `user_roles` ur
+                              INNER JOIN `roles` r ON r.`id` = ur.`role_id`
+                             WHERE ur.`user_id` = u.`id` AND r.`name` IN (' . implode(', ', $marks) . '))
+              LIMIT 1'
+        );
+        $stmt->execute($params);
+
+        return $stmt->fetchColumn() !== false;
+    }
 }

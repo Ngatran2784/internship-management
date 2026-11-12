@@ -7,6 +7,7 @@ use App\Models\InternshipPeriod;
 use App\Models\TopicAssignment;
 use App\Services\TopicMatchingService;
 use InvalidArgumentException;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -15,7 +16,11 @@ use Throwable;
  * Nhiệm vụ thuộc phạm vi:
  * - POST /assignments/auto-match : Chạy thuật toán đối sánh tự động theo nguyện vọng sinh viên (dự thảo)
  * - GET  /assignments/preview    : Xem trước kết quả mô phỏng (dry-run) mà không ghi CSDL
- * - GET  /assignments            : Danh sách phân công theo đợt (sẵn sàng tích hợp cho Quỳnh & Trúc)
+ * - GET  /assignments            : Danh sách phân công theo đợt (chỉ người quản lý thấy bản dự thảo)
+ * - GET|POST /assignments/manual : Form và lưu phân công thủ công (bản dự thảo)
+ * - POST /assignments/cancel     : Hủy phân công dự thảo
+ * - GET  /assignments/check      : Kiểm tra xung đột trước khi công bố (không ghi dữ liệu)
+ * - POST /assignments/publish    : Xác nhận và công bố kết quả của đợt
  */
 class TopicAssignmentController extends Controller
 {
@@ -168,9 +173,17 @@ class TopicAssignmentController extends Controller
         $statistics  = [];
 
         if ($periodId) {
-            $assignments = TopicAssignment::getByPeriod($periodId);
-            $unassigned  = TopicAssignment::getUnassignedStudents($periodId);
-            $statistics  = TopicAssignment::getStatistics($periodId);
+            // Người không có quyền quản lý chỉ thấy kết quả ĐÃ CÔNG BỐ của chính mình; bản dự thảo luôn bị ẩn
+            $assignments = self::visibleAssignments(
+                TopicAssignment::getByPeriod($periodId),
+                $roles,
+                (int)($_SESSION['user_id'] ?? 0)
+            );
+
+            if ($isManager) {
+                $unassigned = TopicAssignment::getUnassignedStudents($periodId);
+                $statistics = TopicAssignment::getStatistics($periodId);
+            }
         }
 
         $viewData = [
@@ -197,6 +210,377 @@ class TopicAssignmentController extends Controller
 
         // Nếu client duyệt Web thông thường: Phản hồi View hoặc trang thông báo chuẩn
         $this->respond('assignments/index', $viewData);
+    }
+
+    /**
+     * Lọc danh sách phân công theo quyền xem:
+     * - Người quản lý: xem tất cả (kể cả bản dự thảo).
+     * - Sinh viên: chỉ bản ghi ĐÃ CÔNG BỐ của chính mình.
+     * - Giảng viên: chỉ bản ghi ĐÃ CÔNG BỐ do mình hướng dẫn.
+     * - Vai trò khác: không thấy gì.
+     */
+    public static function visibleAssignments(array $assignments, array $roles, int $userId): array
+    {
+        if (self::canManage($roles)) {
+            return $assignments;
+        }
+
+        $published = array_filter(
+            $assignments,
+            fn($a) => ($a['status'] ?? '') === TopicAssignment::STATUS_PUBLISHED
+        );
+
+        if (in_array('student', $roles, true)) {
+            $published = array_filter($published, fn($a) => (int)($a['student_id'] ?? 0) === $userId);
+        } elseif (in_array('lecturer', $roles, true)) {
+            $published = array_filter($published, fn($a) => (int)($a['lecturer_id'] ?? 0) === $userId);
+        } else {
+            return [];
+        }
+
+        return array_values($published);
+    }
+
+    /**
+     * GET /assignments/manual?period_id= - Dữ liệu cho form phân công thủ công
+     * Dữ liệu cho View: periods, currentPeriod, students, topics, lecturers, drafts, csrf_token, success, error
+     */
+    public function manual(): void
+    {
+        AuthController::startSession();
+        AuthController::requireLogin();
+
+        if (!self::canManage(AuthController::roles())) {
+            $this->fail('Bạn không có quyền thực hiện phân công đề tài.', 403, '/dashboard');
+            return;
+        }
+
+        $periods  = InternshipPeriod::all();
+        $periodId = filter_var($_GET['period_id'] ?? null, FILTER_VALIDATE_INT);
+
+        if (!$periodId && !empty($periods)) {
+            foreach ($periods as $p) {
+                if ($p['status'] === 'active') {
+                    $periodId = (int)$p['id'];
+                    break;
+                }
+            }
+            if (!$periodId) {
+                $periodId = (int)$periods[0]['id'];
+            }
+        }
+
+        $data = [
+            'periods'       => $periods,
+            'currentPeriod' => $periodId ?: 0,
+            'students'      => [],
+            'topics'        => [],
+            'lecturers'     => [],
+            'drafts'        => [],
+            'statusLabels'  => TopicAssignment::STATUS_LABELS,
+            'methodLabels'  => TopicAssignment::METHOD_LABELS,
+            'csrf_token'    => AuthController::csrfToken(),
+            'success'       => AuthController::pullFlash('success'),
+            'error'         => AuthController::pullFlash('error'),
+        ];
+
+        if ($periodId) {
+            $data['students']  = TopicAssignment::getAssignableStudents((int)$periodId);
+            $data['topics']    = TopicAssignment::getApprovedTopicsWithCapacity((int)$periodId);
+            $data['lecturers'] = TopicAssignment::getLecturersWithLoad((int)$periodId);
+            $data['drafts']    = TopicAssignment::getByPeriod((int)$periodId, ['status' => TopicAssignment::STATUS_DRAFT]);
+        }
+
+        if ($this->wantsJson()) {
+            unset($data['csrf_token']);
+            $this->sendJson(array_merge(['ok' => true], $data), 200);
+            return;
+        }
+
+        $this->respond('assignments/manual', $data);
+    }
+
+    /**
+     * POST /assignments/manual - Lưu phân công thủ công (trạng thái dự thảo)
+     * Tham số: _csrf, period_id, student_id, topic_id, lecturer_id, notes (tùy chọn), max_per_lecturer (tùy chọn)
+     */
+    public function assignManual(): void
+    {
+        AuthController::startSession();
+        AuthController::requireLogin();
+
+        if (!self::canManage(AuthController::roles())) {
+            $this->fail('Bạn không có quyền thực hiện phân công đề tài.', 403, '/dashboard');
+            return;
+        }
+
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+            $this->fail('Phương thức không hợp lệ.', 405, '/assignments/manual');
+            return;
+        }
+
+        if (!AuthController::verifyCsrf($_POST['_csrf'] ?? '')) {
+            $this->fail('Mã bảo mật (CSRF) không hợp lệ hoặc phiên làm việc đã hết hạn.', 403, '/assignments/manual');
+            return;
+        }
+
+        $periodId   = $this->positiveInt($_POST['period_id'] ?? null);
+        $studentId  = $this->positiveInt($_POST['student_id'] ?? null);
+        $topicId    = $this->positiveInt($_POST['topic_id'] ?? null);
+        $lecturerId = $this->positiveInt($_POST['lecturer_id'] ?? null);
+        $back       = '/assignments/manual' . ($periodId ? '?period_id=' . $periodId : '');
+
+        if (!$periodId) {
+            $this->fail('Vui lòng chọn đợt thực tập / đồ án.', 422, '/assignments/manual');
+            return;
+        }
+        if (!$studentId) {
+            $this->fail('Vui lòng chọn sinh viên.', 422, $back);
+            return;
+        }
+        if (!$topicId) {
+            $this->fail('Vui lòng chọn đề tài.', 422, $back);
+            return;
+        }
+        if (!$lecturerId) {
+            $this->fail('Vui lòng chọn giảng viên hướng dẫn.', 422, $back);
+            return;
+        }
+
+        $notes = is_string($_POST['notes'] ?? null) ? trim($_POST['notes']) : '';
+        if (mb_strlen($notes) > 200) {
+            $this->fail('Ghi chú tối đa 200 ký tự.', 422, $back);
+            return;
+        }
+
+        $maxPerLecturer = $this->positiveInt($_POST['max_per_lecturer'] ?? null);
+        if (!$maxPerLecturer || $maxPerLecturer > 50) {
+            $maxPerLecturer = TopicMatchingService::DEFAULT_MAX_STUDENTS_PER_LECTURER;
+        }
+
+        try {
+            $errors = TopicAssignment::validateManual($periodId, $studentId, $topicId, $lecturerId);
+            if ($errors) {
+                $this->fail(implode(' ', $errors), 422, $back);
+                return;
+            }
+
+            TopicAssignment::assignManual(
+                $periodId,
+                $studentId,
+                $topicId,
+                $lecturerId,
+                (int)($_SESSION['user_id'] ?? 0),
+                $notes !== '' ? $notes : null,
+                $maxPerLecturer
+            );
+        } catch (InvalidArgumentException $e) {
+            $this->fail($e->getMessage(), 422, $back);
+            return;
+        } catch (RuntimeException $e) {
+            // Hết chỉ tiêu đề tài/giảng viên hoặc xung đột đồng thời
+            $this->fail($e->getMessage(), 409, $back);
+            return;
+        } catch (Throwable $e) {
+            error_log('AssignManual error: ' . $e->getMessage());
+            $this->fail('Lỗi hệ thống khi lưu phân công.', 500, $back);
+            return;
+        }
+
+        $saved   = TopicAssignment::getByStudent($studentId, $periodId);
+        $message = 'Đã lưu phân công thủ công (Dự thảo).';
+
+        if ($this->wantsJson()) {
+            $this->sendJson([
+                'ok'            => true,
+                'message'       => $message,
+                'assignment_id' => $saved ? (int)$saved['id'] : null,
+                'status'        => TopicAssignment::STATUS_DRAFT,
+            ], 200);
+            return;
+        }
+
+        AuthController::setFlash('success', $message);
+        AuthController::go('/assignments?period_id=' . $periodId);
+    }
+
+    /**
+     * POST /assignments/cancel - Hủy một phân công đang ở trạng thái dự thảo
+     * Tham số: _csrf, id, period_id (để quay lại), reason (tùy chọn)
+     */
+    public function cancel(): void
+    {
+        AuthController::startSession();
+        AuthController::requireLogin();
+
+        if (!self::canManage(AuthController::roles())) {
+            $this->fail('Bạn không có quyền hủy phân công.', 403, '/dashboard');
+            return;
+        }
+
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+            $this->fail('Phương thức không hợp lệ.', 405, '/assignments');
+            return;
+        }
+
+        $periodId = $this->positiveInt($_POST['period_id'] ?? null);
+        $back     = '/assignments' . ($periodId ? '?period_id=' . $periodId : '');
+
+        if (!AuthController::verifyCsrf($_POST['_csrf'] ?? '')) {
+            $this->fail('Mã bảo mật (CSRF) không hợp lệ hoặc phiên làm việc đã hết hạn.', 403, $back);
+            return;
+        }
+
+        $id = $this->positiveInt($_POST['id'] ?? null);
+        if (!$id) {
+            $this->fail('Mã phân công không hợp lệ.', 422, $back);
+            return;
+        }
+
+        $reason = is_string($_POST['reason'] ?? null) ? $_POST['reason'] : null;
+
+        try {
+            TopicAssignment::cancelDraft($id, $reason);
+        } catch (InvalidArgumentException $e) {
+            $this->fail($e->getMessage(), 422, $back);
+            return;
+        } catch (Throwable $e) {
+            error_log('Cancel assignment error: ' . $e->getMessage());
+            $this->fail('Lỗi hệ thống khi hủy phân công.', 500, $back);
+            return;
+        }
+
+        if ($this->wantsJson()) {
+            $this->sendJson(['ok' => true, 'message' => 'Đã hủy phân công.', 'status' => TopicAssignment::STATUS_CANCELLED], 200);
+            return;
+        }
+
+        AuthController::setFlash('success', 'Đã hủy phân công.');
+        AuthController::go($back);
+    }
+
+    /**
+     * GET /assignments/check?period_id= - Báo cáo xung đột trước khi công bố (không ghi dữ liệu)
+     */
+    public function check(): void
+    {
+        AuthController::startSession();
+        AuthController::requireLogin();
+
+        if (!self::canManage(AuthController::roles())) {
+            $this->fail('Bạn không có quyền xem kiểm tra phân công.', 403, '/dashboard');
+            return;
+        }
+
+        $periodId = $this->positiveInt($_GET['period_id'] ?? null);
+        if (!$periodId) {
+            $this->fail('Vui lòng chọn đợt thực tập / đồ án.', 422, '/assignments');
+            return;
+        }
+
+        $maxPerLecturer = $this->positiveInt($_GET['max_per_lecturer'] ?? null);
+        if (!$maxPerLecturer || $maxPerLecturer > 50) {
+            $maxPerLecturer = TopicMatchingService::DEFAULT_MAX_STUDENTS_PER_LECTURER;
+        }
+
+        try {
+            $conflicts  = TopicAssignment::findPublishConflicts($periodId, $maxPerLecturer);
+            $draftCount = TopicAssignment::countByStatus($periodId, TopicAssignment::STATUS_DRAFT);
+        } catch (Throwable $e) {
+            error_log('Check assignments error: ' . $e->getMessage());
+            $this->fail('Lỗi hệ thống khi kiểm tra phân công.', 500, '/assignments');
+            return;
+        }
+
+        $data = [
+            'currentPeriod' => $periodId,
+            'draft_count'   => $draftCount,
+            'conflicts'     => $conflicts,
+            'can_publish'   => $draftCount > 0 && !$conflicts,
+        ];
+
+        if ($this->wantsJson()) {
+            $this->sendJson(array_merge(['ok' => true], $data), 200);
+            return;
+        }
+
+        $this->respond('assignments/check', array_merge($data, ['statistics' => []]));
+    }
+
+    /**
+     * POST /assignments/publish - Xác nhận và công bố kết quả phân công của đợt
+     * Tham số: _csrf, period_id, max_per_lecturer (tùy chọn)
+     * Kiểm tra lại quyền, chỉ tiêu và xung đột tại thời điểm xác nhận; gọi lặp sẽ bị từ chối.
+     */
+    public function publish(): void
+    {
+        AuthController::startSession();
+        AuthController::requireLogin();
+
+        if (!self::canManage(AuthController::roles())) {
+            $this->fail('Bạn không có quyền công bố kết quả phân công.', 403, '/dashboard');
+            return;
+        }
+
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+            $this->fail('Phương thức không hợp lệ.', 405, '/assignments');
+            return;
+        }
+
+        $periodId = $this->positiveInt($_POST['period_id'] ?? null);
+        $back     = '/assignments' . ($periodId ? '?period_id=' . $periodId : '');
+
+        if (!AuthController::verifyCsrf($_POST['_csrf'] ?? '')) {
+            $this->fail('Mã bảo mật (CSRF) không hợp lệ hoặc phiên làm việc đã hết hạn.', 403, $back);
+            return;
+        }
+
+        if (!$periodId) {
+            $this->fail('Vui lòng chọn đợt thực tập / đồ án cần công bố.', 422, '/assignments');
+            return;
+        }
+
+        $maxPerLecturer = $this->positiveInt($_POST['max_per_lecturer'] ?? null);
+        if (!$maxPerLecturer || $maxPerLecturer > 50) {
+            $maxPerLecturer = TopicMatchingService::DEFAULT_MAX_STUDENTS_PER_LECTURER;
+        }
+
+        try {
+            $count = TopicAssignment::publishChecked($periodId, (int)($_SESSION['user_id'] ?? 0), $maxPerLecturer);
+        } catch (InvalidArgumentException $e) {
+            $this->fail($e->getMessage(), 422, $back);
+            return;
+        } catch (RuntimeException $e) {
+            $this->fail($e->getMessage(), 409, $back);
+            return;
+        } catch (Throwable $e) {
+            error_log('Publish assignments error: ' . $e->getMessage());
+            $this->fail('Lỗi hệ thống khi công bố kết quả phân công.', 500, $back);
+            return;
+        }
+
+        $message = sprintf('Đã xác nhận và công bố %d phân công của đợt.', $count);
+
+        if ($this->wantsJson()) {
+            $this->sendJson([
+                'ok'              => true,
+                'message'         => $message,
+                'published_count' => $count,
+                'status'          => TopicAssignment::STATUS_PUBLISHED,
+            ], 200);
+            return;
+        }
+
+        AuthController::setFlash('success', $message);
+        AuthController::go($back);
+    }
+
+    /** Số nguyên dương từ dữ liệu form, hoặc null nếu không hợp lệ */
+    private function positiveInt(mixed $value): ?int
+    {
+        $int = filter_var($value, FILTER_VALIDATE_INT);
+
+        return ($int !== false && $int !== null && $int > 0) ? $int : null;
     }
 
     // =========================================================================

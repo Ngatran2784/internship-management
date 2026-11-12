@@ -123,6 +123,11 @@ $router->post('/wishes/delete',  [TopicWishController::class, 'delete']);
 $router->get('/assignments',             [TopicAssignmentController::class, 'index']);
 $router->get('/assignments/preview',     [TopicAssignmentController::class, 'preview']);
 $router->post('/assignments/auto-match', [TopicAssignmentController::class, 'autoMatch']);
+$router->get('/assignments/manual',      [TopicAssignmentController::class, 'manual']);
+$router->post('/assignments/manual',     [TopicAssignmentController::class, 'assignManual']);
+$router->post('/assignments/cancel',     [TopicAssignmentController::class, 'cancel']);
+$router->get('/assignments/check',       [TopicAssignmentController::class, 'check']);
+$router->post('/assignments/publish',    [TopicAssignmentController::class, 'publish']);
 
 // Hỗ trợ alias trực tiếp /topics/{id} sang xem chi tiết đề tài
 if (preg_match('#/topics/(\d+)$#', $reqPath, $topicMatches)) {
