@@ -130,8 +130,12 @@ class TopicAssignment
         }
 
         if (!empty($filters['keyword'])) {
-            $sql .= " AND (u_s.full_name LIKE :kw OR u_s.username LIKE :kw OR t.name LIKE :kw OR t.code LIKE :kw)";
-            $params[':kw'] = '%' . trim($filters['keyword']) . '%';
+            $sql .= " AND (u_s.full_name LIKE :kw1 OR u_s.username LIKE :kw2 OR t.name LIKE :kw3 OR t.code LIKE :kw4)";
+            $kw = '%' . trim($filters['keyword']) . '%';
+            $params[':kw1'] = $kw;
+            $params[':kw2'] = $kw;
+            $params[':kw3'] = $kw;
+            $params[':kw4'] = $kw;
         }
 
         $sql .= " ORDER BY a.status ASC, a.matched_wish_priority ASC, u_s.username ASC";
@@ -144,8 +148,13 @@ class TopicAssignment
 
     /**
      * Tìm bản ghi phân công của một sinh viên trong đợt cụ thể
+     *
+     * @param int $studentId ID người dùng sinh viên
+     * @param int|null $periodId ID đợt thực tập / đồ án (tùy chọn)
+     * @param bool $onlyPublished Nếu true, chỉ trả về khi kết quả đã công bố (bảo mật cho giao diện Sinh viên)
+     * @return array|null Thông tin phân công hoặc null nếu chưa có/chưa công bố
      */
-    public static function getByStudent(int $studentId, ?int $periodId = null): ?array
+    public static function getByStudent(int $studentId, ?int $periodId = null, bool $onlyPublished = false): ?array
     {
         $pdo = Database::getConnection();
 
@@ -175,8 +184,15 @@ class TopicAssignment
             $params[':period_id'] = $periodId;
         }
 
-        $sql .= " AND a.status != :cancelled_status ORDER BY a.id DESC LIMIT 1";
-        $params[':cancelled_status'] = self::STATUS_CANCELLED;
+        if ($onlyPublished) {
+            $sql .= " AND a.status = :pub_status";
+            $params[':pub_status'] = self::STATUS_PUBLISHED;
+        } else {
+            $sql .= " AND a.status != :cancelled_status";
+            $params[':cancelled_status'] = self::STATUS_CANCELLED;
+        }
+
+        $sql .= " ORDER BY a.id DESC LIMIT 1";
 
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
@@ -394,6 +410,101 @@ class TopicAssignment
         ]);
 
         return ((int)$stmt->fetchColumn()) > 0;
+    }
+
+    /**
+     * Lấy danh sách đề tài đã duyệt trong một đợt kèm thông tin giảng viên hướng dẫn và số chỗ còn lại
+     *
+     * Chuẩn hóa dữ liệu theo Data Contract Sprint 4:
+     * - Bảng topics dùng `proposer_id` (người đề xuất đề tài).
+     * - Bảng topic_assignments dùng `lecturer_id` (giảng viên hướng dẫn chính thức).
+     * - Trả về các trường chuẩn: `topic_id`, `topic_name`, `topic_code`, `max_students`, `remaining_slots`, `lecturer_id`, `lecturer_name`.
+     * - Không áp đặt mặc định người đề xuất là người hướng dẫn:
+     *   + Nếu đề tài đã có phân công: lấy `lecturer_id` từ `topic_assignments`.
+     *   + Nếu chưa có phân công: tạm lấy `proposer_id` làm giảng viên đề xuất ban đầu và gắn cờ `is_proposer_default = true`.
+     *
+     * @param int $periodId ID đợt thực tập / đồ án
+     * @return array Danh sách đề tài đã chuẩn hóa
+     */
+    public static function getApprovedTopicsWithSlots(int $periodId): array
+    {
+        $pdo = Database::getConnection();
+
+        $sql = "
+            SELECT 
+                t.id AS topic_id,
+                t.code AS topic_code,
+                t.name AS topic_name,
+                t.type AS topic_type,
+                t.max_students,
+                t.proposer_id,
+                u_p.full_name AS proposer_name,
+                u_p.email AS proposer_email,
+                -- Giảng viên hướng dẫn: ưu tiên lấy từ topic_assignments nếu đã phân công
+                COALESCE(
+                    (SELECT a_sub.lecturer_id 
+                     FROM topic_assignments a_sub 
+                     WHERE a_sub.topic_id = t.id 
+                       AND a_sub.period_id = t.period_id 
+                       AND a_sub.status != :c1 
+                     LIMIT 1),
+                    t.proposer_id
+                ) AS lecturer_id,
+                COALESCE(
+                    (SELECT u_l.full_name 
+                     FROM topic_assignments a_sub 
+                     JOIN users u_l ON a_sub.lecturer_id = u_l.id 
+                     WHERE a_sub.topic_id = t.id 
+                       AND a_sub.period_id = t.period_id 
+                       AND a_sub.status != :c2 
+                     LIMIT 1),
+                    u_p.full_name
+                ) AS lecturer_name,
+                CASE 
+                    WHEN EXISTS (
+                        SELECT 1 FROM topic_assignments a_sub 
+                        WHERE a_sub.topic_id = t.id 
+                          AND a_sub.period_id = t.period_id 
+                          AND a_sub.status != :c3
+                    ) THEN 0
+                    ELSE 1
+                END AS is_proposer_default,
+                COUNT(CASE WHEN a.status IS NOT NULL AND a.status != :c4 THEN a.id END) AS assigned_count,
+                GREATEST(0, CAST(t.max_students AS SIGNED) - COUNT(CASE WHEN a.status IS NOT NULL AND a.status != :c5 THEN a.id END)) AS remaining_slots
+            FROM topics t
+            JOIN users u_p ON t.proposer_id = u_p.id
+            LEFT JOIN topic_assignments a ON t.id = a.topic_id AND a.period_id = t.period_id AND a.status != :c6
+            WHERE t.period_id = :period_id 
+              AND t.status = 'approved'
+            GROUP BY t.id, t.code, t.name, t.type, t.max_students, t.proposer_id, u_p.full_name, u_p.email
+            ORDER BY t.code ASC, t.id ASC
+        ";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([
+            ':period_id' => $periodId,
+            ':c1'        => self::STATUS_CANCELLED,
+            ':c2'        => self::STATUS_CANCELLED,
+            ':c3'        => self::STATUS_CANCELLED,
+            ':c4'        => self::STATUS_CANCELLED,
+            ':c5'        => self::STATUS_CANCELLED,
+            ':c6'        => self::STATUS_CANCELLED,
+        ]);
+
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($rows as &$r) {
+            $r['topic_id']            = (int)$r['topic_id'];
+            $r['max_students']        = (int)$r['max_students'];
+            $r['assigned_count']      = (int)$r['assigned_count'];
+            $r['remaining_slots']     = (int)$r['remaining_slots'];
+            $r['proposer_id']         = (int)$r['proposer_id'];
+            $r['lecturer_id']         = (int)$r['lecturer_id'];
+            $r['is_proposer_default'] = (bool)$r['is_proposer_default'];
+        }
+        unset($r);
+
+        return $rows;
     }
 
     // =========================================================================

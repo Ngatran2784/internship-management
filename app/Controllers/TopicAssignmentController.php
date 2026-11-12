@@ -163,30 +163,62 @@ class TopicAssignmentController extends Controller
             }
         }
 
-        $assignments = [];
-        $unassigned  = [];
-        $statistics  = [];
+        // Thu nhận và kiểm tra tính hợp lệ của các bộ lọc đầu vào
+        $rawStatus     = isset($_GET['status']) && is_string($_GET['status']) ? trim($_GET['status']) : '';
+        $rawKeyword    = isset($_GET['keyword']) && is_string($_GET['keyword']) ? trim($_GET['keyword']) : '';
+        $rawLecturerId = filter_var($_GET['lecturer_id'] ?? null, FILTER_VALIDATE_INT);
+
+        $filters = [];
+        $validatedStatus = null;
+        if ($rawStatus !== '' && in_array($rawStatus, TopicAssignment::ALLOWED_STATUSES, true)) {
+            $filters['status'] = $rawStatus;
+            $validatedStatus = $rawStatus;
+        }
+
+        $validatedKeyword = null;
+        if ($rawKeyword !== '') {
+            $validatedKeyword = mb_substr($rawKeyword, 0, 100);
+            $filters['keyword'] = $validatedKeyword;
+        }
+
+        $validatedLecturerId = null;
+        if ($rawLecturerId && $rawLecturerId > 0) {
+            $filters['lecturer_id'] = (int)$rawLecturerId;
+            $validatedLecturerId = (int)$rawLecturerId;
+        }
+
+        $assignments    = [];
+        $unassigned     = [];
+        $statistics     = [];
+        $approvedTopics = [];
 
         if ($periodId) {
-            $assignments = TopicAssignment::getByPeriod($periodId);
-            $unassigned  = TopicAssignment::getUnassignedStudents($periodId);
-            $statistics  = TopicAssignment::getStatistics($periodId);
+            $assignments    = TopicAssignment::getByPeriod($periodId, $filters);
+            $unassigned     = TopicAssignment::getUnassignedStudents($periodId);
+            $statistics     = TopicAssignment::getStatistics($periodId);
+            $approvedTopics = TopicAssignment::getApprovedTopicsWithSlots($periodId);
         }
 
         $viewData = [
-            'periods'      => $periods,
-            'currentPeriod'=> $periodId,
-            'assignments'  => $assignments,
-            'unassigned'   => $unassigned,
-            'statistics'   => $statistics,
-            'isManager'    => $isManager,
-            'statusLabels' => TopicAssignment::STATUS_LABELS,
-            'statusBadges' => TopicAssignment::STATUS_BADGES,
-            'methodLabels' => TopicAssignment::METHOD_LABELS,
-            'methodBadges' => TopicAssignment::METHOD_BADGES,
-            'csrf_token'   => AuthController::csrfToken(),
-            'success'      => AuthController::pullFlash('success'),
-            'error'        => AuthController::pullFlash('error'),
+            'periods'        => $periods,
+            'currentPeriod'  => $periodId,
+            'assignments'    => $assignments,
+            'unassigned'     => $unassigned,
+            'statistics'     => $statistics,
+            'approvedTopics' => $approvedTopics,
+            'filters'        => [
+                'status'      => $validatedStatus,
+                'keyword'     => $validatedKeyword,
+                'lecturer_id' => $validatedLecturerId,
+            ],
+            'isManager'      => $isManager,
+            'statusLabels'   => TopicAssignment::STATUS_LABELS,
+            'statusBadges'   => TopicAssignment::STATUS_BADGES,
+            'methodLabels'   => TopicAssignment::METHOD_LABELS,
+            'methodBadges'   => TopicAssignment::METHOD_BADGES,
+            'csrf_token'     => AuthController::csrfToken(),
+            'success'        => AuthController::pullFlash('success'),
+            'error'          => AuthController::pullFlash('error'),
         ];
 
         // Nếu client yêu cầu JSON (API/Fetch/AJAX):
