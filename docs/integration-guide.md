@@ -79,6 +79,26 @@ Tài khoản thử nghiệm sau khi seed:
 - Quản trị viên: `admin` / Mật khẩu: `Admin@123` (Vai trò: `admin`)
 - Sinh viên: `sv001` / Mật khẩu: `Sv@12345` (Vai trò: `student`)
 
+### 2.4. Áp dụng migration phân công đề tài
+Nếu `/assignments` báo `Table 'internship_management.topic_assignments' doesn't exist`,
+cơ sở dữ liệu ứng dụng đang kết nối chưa có bảng kết quả phân công. Sau khi các bảng
+`users`, `internship_periods` và `topics` đã được tạo, chạy migration bổ sung:
+```powershell
+C:\xampp\mysql\bin\mysql.exe -u root -D internship_management -e "SOURCE C:/xampp/htdocs/internship-management/database/migrations/create_topic_assignments_table.sql;"
+```
+
+Migration dùng `CREATE TABLE IF NOT EXISTS`, không xóa dữ liệu. Kiểm tra kết quả bằng:
+```powershell
+C:\xampp\mysql\bin\mysql.exe -u root -D internship_management -e "SHOW TABLES LIKE 'topic_assignments';"
+```
+Chỉ chạy lệnh trên đúng MySQL/port và database đang khai báo trong `config/database.php`
+(thông báo lỗi hiện tại ghi database `internship_management`). Nếu máy dùng đường dẫn cài
+dự án khác, thay đường dẫn sau `SOURCE` bằng đường dẫn migration thực tế. Trước khi chạy,
+xác nhận các bảng `users`, `internship_periods` và `topics` đã tồn tại và sao lưu database.
+Nếu `topic_assignments` đã tồn tại, kiểm tra `SHOW CREATE TABLE topic_assignments;` thay vì
+coi `CREATE TABLE IF NOT EXISTS` là cách sửa một bảng có cấu trúc sai. Không chạy lại
+`schema.sql` hoặc SQL tổng chỉ để xử lý thiếu riêng bảng này.
+
 ---
 
 ## 3. Quy trình Phát triển Song song trên Git
@@ -125,6 +145,50 @@ Cả `UserController` và `InternshipPeriodController` đều đã được tíc
 2. **Bước 2:** Frontend căn cứ vào tài liệu `docs/frontend-contract.md` để tạo tệp View tương ứng (ví dụ: `app/Views/periods/index.php`).
 3. **Bước 3:** Kiểm tra hiển thị thực tế trên trình duyệt: dữ liệu CSDL được nạp đúng vào các bảng, form submit thành công, thông báo flash hiển thị chuẩn xác.
 4. **Bước 4:** Kiểm tra an toàn: CSRF token có mặt trong mọi form POST, ký tự đầu ra được escape đầy đủ chống XSS.
+
+### 4.3. Hợp đồng tích hợp Sprint 4 — Phân công
+Route hiện có trong `public/index.php`:
+- `GET /assignments` → `TopicAssignmentController::index` (cần đăng nhập; giao diện dành
+  cho `admin`, `training_dept`, `department_head`, `faculty_staff`, nhưng hiện Backend chưa
+  chặn nhóm vai trò khác trước khi truy vấn/xuất dữ liệu).
+- `POST /assignments/auto-match` → `TopicAssignmentController::autoMatch` (cùng nhóm quyền,
+  yêu cầu `_csrf`; chạy đối sánh và lưu bản dự thảo).
+- `GET /assignments/preview` → mô phỏng đối sánh, trả JSON cho nhóm quyền quản lý.
+
+Lưu ý phân quyền cần xử lý ở Backend: `index()` hiện chỉ gán `isManager` cho View nhưng
+vẫn truy vấn các bản ghi và đưa chúng vào phản hồi JSON của request đăng nhập không thuộc
+nhóm quản lý. Cảnh báo/ẩn bảng trong View không phải kiểm soát truy cập; Backend cần từ
+chối trước khi truy vấn hoặc trả dữ liệu cho vai trò không có quyền.
+
+`GET /assignments` truyền các biến `periods`, `currentPeriod`, `assignments`, `unassigned`,
+`statistics`, `approvedTopics`, `filters`, `isManager`, `statusLabels`, `statusBadges`,
+`methodLabels`, `methodBadges`, `csrf_token`, `success` và `error`. Mỗi dòng `assignments`
+có `student_code`, `student_name`, `topic_name`, `lecturer_name`, `matched_wish_priority`,
+`assignment_method`, `status` cùng các mã/chi tiết liên quan; `unassigned` có
+`student_code`, `student_name`, `wishes_count`. Các biến này đủ để hiển thị người trúng
+NV1/NV2/NV3, nhưng **không** đủ để liệt kê cả ba nguyện vọng và tên các đề tài đã chọn.
+`TopicWish` lưu `priority`, `topic_id`, `topic_code`, `topic_name`; cần Backend cung cấp
+danh sách các nguyện vọng theo `period_id` và `student_id` cho toàn bộ sinh viên trong
+đợt (ví dụ map `wishesByStudent[student_id][priority]`). Không được suy ra NV1–NV3 từ
+`wishes_count` hoặc chỉ từ `matched_wish_priority`.
+
+Các màn hình chưa có route/controller để kết nối:
+- Tạo thủ công: cần GET nạp `periods`, sinh viên hợp lệ, đề tài đã duyệt/còn chỉ tiêu,
+  giảng viên hợp lệ, `csrf_token`; POST phải xác thực quyền/CSRF và trả lại `errors`/`old`
+  hoặc flash khi thất bại. Hiện chưa có `GET/POST /assignments/create` (hoặc route tương đương).
+- Xác nhận/công bố: cần route POST có quyền quản lý, CSRF và kết quả thao tác. Model có
+  `publishPeriodAssignments`, nhưng hiện không có controller action/route, nên giao diện
+  không được tự gửi tới phương thức Model.
+- Sinh viên hướng dẫn: cần route/controller chỉ lấy `TopicAssignment::getByLecturer` với
+  `lecturerId` lấy từ session, không lấy từ query; phương thức hiện tại yêu cầu `periodId`,
+  nên route cần giới hạn một đợt hoặc Backend cần tổng hợp kết quả qua các đợt được yêu cầu
+  trong View. Cần nối mã/tên đợt và yêu cầu quyền `lecturer`. View tự lọc `lecturer_id` để
+  tránh render nhầm, nhưng không thay thế kiểm tra phân quyền và giới hạn truy vấn ở Backend.
+- Kết quả của sinh viên: Model có `TopicAssignment::getByStudent($studentId, $periodId, true)`
+  trả về bản ghi đã công bố cùng tên đề tài, giảng viên, đợt; tuy nhiên chưa có route/action.
+  Khi tích hợp, Backend phải lấy `$studentId` từ session, bắt buộc vai trò `student` và gọi
+  với `onlyPublished=true`. Chưa tạo view `student_result.php` để tránh một màn hình không
+  có điểm vào/luồng nghiệp vụ thực tế.
 
 ---
 

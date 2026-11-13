@@ -404,3 +404,65 @@ a:hover {
     justify-self: end;
   }
 }
+
+/* Sprint 4: keep assignment tables readable without changing shared page tables. */
+.assignment-page .assignment-table {
+  min-width: 60rem;
+}
+
+.assignment-page .assignment-table th,
+.assignment-page .assignment-table td {
+  vertical-align: middle;
+}
+
+.assignment-page .assignment-table th {
+  white-space: nowrap;
+}
+
+.assignment-page .assignment-filter-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: end;
+  gap: 1rem;
+}
+
+.assignment-page .assignment-filter-field {
+  min-width: 0;
+}
+
+.assignment-page .assignment-filter-field .form-label {
+  margin-bottom: 0.35rem;
+}
+
+.assignment-page .assignment-filter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.assignment-page .assignment-action-form {
+  flex: 0 0 auto;
+}
+
+@media (min-width: 768px) {
+  .assignment-page .assignment-filter-toolbar {
+    grid-template-columns: minmax(12rem, 1.15fr) minmax(15rem, 1.5fr) minmax(12rem, 1fr) auto;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .assignment-page .assignment-table {
+    min-width: 48rem;
+  }
+
+  .assignment-page .assignment-action-form,
+  .assignment-page .assignment-action-form .btn,
+  .assignment-page .assignment-action-form form {
+    width: 100%;
+  }
+
+  .assignment-page .assignment-filter-actions,
+  .assignment-page .assignment-filter-actions .btn {
+    width: 100%;
+  }
+}

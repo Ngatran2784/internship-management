@@ -10,7 +10,7 @@ declare(strict_types=1);
  * 2. Trạng thái Expanded của nhóm cha khi truy cập mục con
  * 3. Các route xem chi tiết / sửa đợt / sửa user active đúng mục Danh sách tương ứng
  * 4. Đầy đủ 8 nhóm menu hệ thống theo chuẩn yêu cầu
- * 5. Các nhóm 4-8 thuộc sprint tiếp theo ở trạng thái disabled đúng chuẩn (không route giả, không 404)
+ * 5. Các mục chưa có route vẫn disabled; chức năng phân công dùng route Backend hiện có
  * 6. Đã xóa bỏ hoàn toàn dòng tiêu đề "Chức năng mở rộng" và nhãn "Sắp", "Coming soon"
  * 7. Không có xung đột CSS giữa header.php và vinhuni-theme.css
  * 8. Kiểm tra phân quyền hiển thị menu (Admin, Training Dept, Student, Lecturer)
@@ -156,8 +156,11 @@ t("Nhóm 5: Quản lý đề tài có danh sách, đề xuất và chờ duyệt
     str_contains($sbDash, 'href="/CNPM/internship-management/public/topics/create"') &&
     str_contains($sbDash, 'href="/CNPM/internship-management/public/topics/pending"')
 );
-t("Nhóm 6: Phân công đề tài và giảng viên tồn tại ở trạng thái disabled", 
-    str_contains($sbDash, 'Phân công đề tài và giảng viên') && str_contains($sbDash, 'aria-disabled="true"')
+t("Nhóm 6: Admin thấy liên kết phân công dùng route thật",
+    str_contains($sbDash, 'Phân công đề tài')
+    && str_contains($sbDash, 'href="/CNPM/internship-management/public/assignments"')
+    && str_contains($sbDash, 'href="/CNPM/internship-management/public/assignments#assignment-results"')
+    && str_contains($sbDash, 'Kết quả phân công')
 );
 t("Nhóm 7: Quản lý đơn vị thực tập tồn tại ở trạng thái disabled", 
     str_contains($sbDash, 'Quản lý đơn vị thực tập') && str_contains($sbDash, 'aria-disabled="true"')
@@ -194,7 +197,7 @@ t("Giảng viên: KHÔNG hiển thị Đề tài chờ duyệt", !str_contains($
 // Cán bộ khoa / Trưởng bộ môn
 $sbDeptHead = renderSidebarForTest(['department_head'], '/CNPM/internship-management/public/dashboard', 'dashboard');
 t("Cán bộ khoa: Có menu Quản lý đề tài và Đề tài chờ duyệt", str_contains($sbDeptHead, 'Quản lý đề tài') && str_contains($sbDeptHead, 'Đề tài chờ duyệt'));
-t("Cán bộ khoa: Có hiển thị menu Phân công đề tài và giảng viên", str_contains($sbDeptHead, 'Phân công đề tài và giảng viên'));
+t("Cán bộ khoa: Có liên kết phân công dùng route thật", str_contains($sbDeptHead, 'href="/CNPM/internship-management/public/assignments"'));
 t("Cán bộ khoa: Không thấy mục Đăng ký nguyện vọng", !str_contains($sbDeptHead, 'Đăng ký nguyện vọng'));
 
 // Phòng đào tạo
@@ -202,8 +205,26 @@ $sbTraining = renderSidebarForTest(['training_dept'], '/CNPM/internship-manageme
 t("Phòng đào tạo: Không thấy menu Quản lý người dùng", !str_contains($sbTraining, 'Quản lý người dùng'));
 t("Phòng đào tạo: Thấy menu Đợt thực tập & đồ án", str_contains($sbTraining, 'Đợt thực tập &amp; đồ án'));
 t("Phòng đào tạo: Có quản lý đề tài và chờ duyệt", str_contains($sbTraining, 'Quản lý đề tài') && str_contains($sbTraining, 'href="/CNPM/internship-management/public/topics/pending"'));
+t("Phòng đào tạo: Có liên kết phân công theo quyền Backend", str_contains($sbTraining, 'href="/CNPM/internship-management/public/assignments"'));
 t("Phòng đào tạo: Không còn tiêu đề 'Chức năng mở rộng' và nhãn 'Sắp có'", 
     !str_contains($sbTraining, 'Chức năng mở rộng') && !str_contains($sbTraining, 'Sắp có')
+);
+
+$sbAssignments = renderSidebarForTest(['admin'], '/CNPM/internship-management/public/assignments?period_id=1');
+preg_match_all('/class="[^"]*nav-link[^"]*\\bactive\\b[^"]*"/', $sbAssignments, $mAssignments);
+t("Admin /assignments: Liên kết đúng route là duy nhất mục active",
+    count($mAssignments[0]) === 1
+    && str_contains($sbAssignments, 'href="/CNPM/internship-management/public/assignments"')
+    && str_contains($sbAssignments, 'aria-current="page"')
+);
+
+$sbFacultyStaff = renderSidebarForTest(['faculty_staff'], '/CNPM/internship-management/public/assignments');
+t("Cán bộ khoa: Có menu phân công theo quyền Backend",
+    str_contains($sbFacultyStaff, 'href="/CNPM/internship-management/public/assignments"')
+);
+$sbLecturerFacultyStaff = renderSidebarForTest(['lecturer', 'faculty_staff'], '/CNPM/internship-management/public/assignments');
+t("Tài khoản giảng viên kiêm cán bộ khoa: Có menu phân công theo quyền Backend",
+    str_contains($sbLecturerFacultyStaff, 'href="/CNPM/internship-management/public/assignments"')
 );
 
 // ── 7. Kiểm tra mục độc lập 'Đăng ký nguyện vọng' và thứ tự hiển thị ───────────
