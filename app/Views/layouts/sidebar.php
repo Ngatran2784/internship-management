@@ -7,6 +7,7 @@ $currentRoles   = $_SESSION['roles'] ?? ($currentRoles ?? []);
 $isAdmin        = in_array('admin',           $currentRoles, true);
 $isTrainingDept = in_array('training_dept',   $currentRoles, true);
 $isDeptHead     = in_array('department_head', $currentRoles, true);
+$isFacultyStaff = in_array('faculty_staff',    $currentRoles, true);
 $isLecturer     = in_array('lecturer',        $currentRoles, true);
 $isStudent      = in_array('student',         $currentRoles, true);
 
@@ -51,6 +52,7 @@ $isTopicPending = ($currentRoute === '/topics/pending');
 $isTopicBrowse = (str_starts_with($currentRoute, '/topics') && !$isTopicCreate && !$isTopicPending);
 $isTopicsGroup = ($isTopicBrowse || $isTopicCreate || $isTopicPending);
 $isWishes = str_starts_with($currentRoute, '/wishes');
+$isAssignments = str_starts_with($currentRoute, '/assignments');
 ?>
 <aside class="navbar navbar-vertical navbar-expand-lg app-sidebar" data-bs-theme="dark">
     <div class="container-fluid">
@@ -219,12 +221,22 @@ $isWishes = str_starts_with($currentRoute, '/wishes');
                     </li>
                     <?php endif; ?>
 
-                    <!-- 6. Phân công đề tài và giảng viên -->
                     <li class="nav-item">
-                        <span class="nav-link disabled" aria-disabled="true">
+                        <a class="nav-link<?= $isAssignments ? ' active' : '' ?>"
+                           data-assignment-nav="list"
+                           href="<?= $escape($baseUrl) ?>/assignments"
+                           <?= $isAssignments ? 'aria-current="page"' : '' ?>>
                             <span class="nav-link-icon"><i class="ti ti-user-share fs-2"></i></span>
-                            <span class="nav-link-title">Phân công đề tài và giảng viên</span>
-                        </span>
+                            <span class="nav-link-title">Phân công đề tài</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link"
+                           data-assignment-nav="results"
+                           href="<?= $escape($baseUrl) ?>/assignments#assignment-results">
+                            <span class="nav-link-icon"><i class="ti ti-list-check fs-2"></i></span>
+                            <span class="nav-link-title">Kết quả phân công</span>
+                        </a>
                     </li>
 
                     <!-- 7. Quản lý đơn vị thực tập -->
@@ -305,10 +317,21 @@ $isWishes = str_starts_with($currentRoute, '/wishes');
                         </div>
                     </li>
                     <li class="nav-item">
-                        <span class="nav-link disabled" aria-disabled="true">
+                        <a class="nav-link<?= $isAssignments ? ' active' : '' ?>"
+                           data-assignment-nav="list"
+                           href="<?= $escape($baseUrl) ?>/assignments"
+                           <?= $isAssignments ? 'aria-current="page"' : '' ?>>
                             <span class="nav-link-icon"><i class="ti ti-user-share fs-2"></i></span>
-                            <span class="nav-link-title">Phân công đề tài và giảng viên</span>
-                        </span>
+                            <span class="nav-link-title">Phân công đề tài</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link"
+                           data-assignment-nav="results"
+                           href="<?= $escape($baseUrl) ?>/assignments#assignment-results">
+                            <span class="nav-link-icon"><i class="ti ti-list-check fs-2"></i></span>
+                            <span class="nav-link-title">Kết quả phân công</span>
+                        </a>
                     </li>
                     <li class="nav-item">
                         <span class="nav-link disabled" aria-disabled="true">
@@ -377,6 +400,24 @@ $isWishes = str_starts_with($currentRoute, '/wishes');
                     </li>
 
                     <li class="nav-item">
+                        <a class="nav-link<?= $isAssignments ? ' active' : '' ?>"
+                           data-assignment-nav="list"
+                           href="<?= $escape($baseUrl) ?>/assignments"
+                           <?= $isAssignments ? 'aria-current="page"' : '' ?>>
+                            <span class="nav-link-icon"><i class="ti ti-user-share fs-2"></i></span>
+                            <span class="nav-link-title">Phân công đề tài</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link"
+                           data-assignment-nav="results"
+                           href="<?= $escape($baseUrl) ?>/assignments#assignment-results">
+                            <span class="nav-link-icon"><i class="ti ti-list-check fs-2"></i></span>
+                            <span class="nav-link-title">Kết quả phân công</span>
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
                         <a class="nav-link<?= $isTopicBrowse ? ' active' : '' ?>"
                            href="<?= $escape($baseUrl) ?>/topics" <?= $isTopicBrowse ? 'aria-current="page"' : '' ?>>
                             <span class="nav-link-icon"><i class="ti ti-file-certificate fs-2"></i></span>
@@ -425,6 +466,25 @@ $isWishes = str_starts_with($currentRoute, '/wishes');
                             <span class="nav-link-title">Thông tin cá nhân</span>
                         </a>
                     </li>
+                    <?php if ($isFacultyStaff): ?>
+                    <li class="nav-item">
+                        <a class="nav-link<?= $isAssignments ? ' active' : '' ?>"
+                           data-assignment-nav="list"
+                           href="<?= $escape($baseUrl) ?>/assignments"
+                           <?= $isAssignments ? 'aria-current="page"' : '' ?>>
+                            <span class="nav-link-icon"><i class="ti ti-user-share fs-2"></i></span>
+                            <span class="nav-link-title">Phân công đề tài</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link"
+                           data-assignment-nav="results"
+                           href="<?= $escape($baseUrl) ?>/assignments#assignment-results">
+                            <span class="nav-link-icon"><i class="ti ti-list-check fs-2"></i></span>
+                            <span class="nav-link-title">Kết quả phân công</span>
+                        </a>
+                    </li>
+                    <?php endif; ?>
                     <li class="nav-item sidebar-nav-group">
                         <button class="nav-link sidebar-group-toggle" type="button"
                                 data-bs-toggle="collapse" data-bs-target="#sidebar-topics-menu-lecturer"
@@ -456,6 +516,13 @@ $isWishes = str_starts_with($currentRoute, '/wishes');
                         <span class="nav-link disabled" aria-disabled="true">
                             <span class="nav-link-icon"><i class="ti ti-book fs-2"></i></span>
                             <span class="nav-link-title">Đề tài hướng dẫn</span>
+                        </span>
+                    </li>
+                    <li class="nav-item">
+                        <span class="nav-link disabled" aria-disabled="true"
+                              title="Backend chưa có route danh sách sinh viên hướng dẫn">
+                            <span class="nav-link-icon"><i class="ti ti-users fs-2"></i></span>
+                            <span class="nav-link-title">Sinh viên hướng dẫn</span>
                         </span>
                     </li>
                     <li class="nav-item">
@@ -528,6 +595,25 @@ $isWishes = str_starts_with($currentRoute, '/wishes');
                             <span class="nav-link-title">Đăng ký nguyện vọng</span>
                         </a>
                     </li>
+                    <?php if ($isFacultyStaff): ?>
+                    <li class="nav-item">
+                        <a class="nav-link<?= $isAssignments ? ' active' : '' ?>"
+                           data-assignment-nav="list"
+                           href="<?= $escape($baseUrl) ?>/assignments"
+                           <?= $isAssignments ? 'aria-current="page"' : '' ?>>
+                            <span class="nav-link-icon"><i class="ti ti-user-share fs-2"></i></span>
+                            <span class="nav-link-title">Phân công đề tài</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link"
+                           data-assignment-nav="results"
+                           href="<?= $escape($baseUrl) ?>/assignments#assignment-results">
+                            <span class="nav-link-icon"><i class="ti ti-list-check fs-2"></i></span>
+                            <span class="nav-link-title">Kết quả phân công</span>
+                        </a>
+                    </li>
+                    <?php endif; ?>
 
                     <!-- 5. Xem đợt thực tập -->
                     <li class="nav-item">
@@ -602,6 +688,25 @@ $isWishes = str_starts_with($currentRoute, '/wishes');
                             <span class="nav-link-title">Chức năng theo vai trò</span>
                         </span>
                     </li>
+                    <?php if ($isFacultyStaff): ?>
+                    <li class="nav-item">
+                        <a class="nav-link<?= $isAssignments ? ' active' : '' ?>"
+                           data-assignment-nav="list"
+                           href="<?= $escape($baseUrl) ?>/assignments"
+                           <?= $isAssignments ? 'aria-current="page"' : '' ?>>
+                            <span class="nav-link-icon"><i class="ti ti-user-share fs-2"></i></span>
+                            <span class="nav-link-title">Phân công đề tài</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link"
+                           data-assignment-nav="results"
+                           href="<?= $escape($baseUrl) ?>/assignments#assignment-results">
+                            <span class="nav-link-icon"><i class="ti ti-list-check fs-2"></i></span>
+                            <span class="nav-link-title">Kết quả phân công</span>
+                        </a>
+                    </li>
+                    <?php endif; ?>
 
                     <?php endif; ?>
 
@@ -610,3 +715,22 @@ $isWishes = str_starts_with($currentRoute, '/wishes');
         </div>
     </div>
 </aside>
+<script>
+(() => {
+    const assignmentLinks = document.querySelectorAll('[data-assignment-nav]');
+    if (!assignmentLinks.length) return;
+
+    const updateAssignmentNav = () => {
+        const selected = window.location.hash === '#assignment-results' ? 'results' : 'list';
+        assignmentLinks.forEach((link) => {
+            const active = link.dataset.assignmentNav === selected;
+            link.classList.toggle('active', active);
+            if (active) link.setAttribute('aria-current', 'page');
+            else link.removeAttribute('aria-current');
+        });
+    };
+
+    updateAssignmentNav();
+    window.addEventListener('hashchange', updateAssignmentNav);
+})();
+</script>
