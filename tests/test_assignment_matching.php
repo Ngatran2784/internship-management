@@ -339,22 +339,63 @@ try {
         isset($stats['total_registered'], $stats['active_assignments'], $stats['unassigned_count'])
     );
 
-    // 6.5. getByStudent
-    $sv3Assignment = TopicAssignment::getByStudent($studentIds['SV-TEST-03'], $testPeriodId);
-    t("Tích hợp Quỳnh (S4-06): getByStudent trả về thông tin đề tài và GV của sinh viên",
+    // 6.5. getByStudent và quy tắc bảo vệ kết quả DỰ THẢO (DRAFT)
+    // Trước khi publish: Sinh viên gọi với $onlyPublished = true PHẢI trả về null
+    $draftSvResult = TopicAssignment::getByStudent($studentIds['SV-TEST-03'], $testPeriodId, true);
+    t("Bảo mật phân công: Sinh viên KHÔNG thể xem kết quả khi còn ở trạng thái draft", $draftSvResult === null);
+
+    // Khi gọi với quyền quản lý ($onlyPublished = false), lấy được bản ghi dự thảo
+    $sv3Assignment = TopicAssignment::getByStudent($studentIds['SV-TEST-03'], $testPeriodId, false);
+    t("Tích hợp (S4-06): getByStudent trả về thông tin đề tài và GV của sinh viên khi xem nội bộ",
         $sv3Assignment !== null && (int)$sv3Assignment['topic_id'] === $topic1Id
     );
 
-    // 6.6. getByLecturer
-    $gv1Students = TopicAssignment::getByLecturer($lecturer1Id, $testPeriodId);
-    t("Tích hợp Quỳnh (S4-06): getByLecturer trả về danh sách sinh viên GV hướng dẫn", count($gv1Students) >= 1);
+    // 6.6. getApprovedTopicsWithSlots & Topic::getApprovedWithSlots (Nga - Chuẩn hóa dữ liệu Sprint 4)
+    $approvedTopicsWithSlots = TopicAssignment::getApprovedTopicsWithSlots($testPeriodId);
+    $proxyApprovedTopics = Topic::getApprovedWithSlots($testPeriodId);
+    t("Chuẩn hóa dữ liệu: getApprovedTopicsWithSlots trả về danh sách đề tài đã duyệt", count($approvedTopicsWithSlots) >= 3);
+    t("Chuẩn hóa dữ liệu: Topic::getApprovedWithSlots đồng bộ 100% với TopicAssignment", count($proxyApprovedTopics) === count($approvedTopicsWithSlots));
 
-    // 6.7. publishPeriodAssignments (Trúc - S4-04)
+    $firstTopicSlot = $approvedTopicsWithSlots[0] ?? [];
+    $hasRequiredSlotKeys = isset(
+        $firstTopicSlot['lecturer_id'],
+        $firstTopicSlot['lecturer_name'],
+        $firstTopicSlot['topic_id'],
+        $firstTopicSlot['topic_name'],
+        $firstTopicSlot['max_students'],
+        $firstTopicSlot['remaining_slots']
+    );
+    t("Chuẩn hóa dữ liệu: Đề tài trả về đầy đủ các trường thống nhất (lecturer_id, lecturer_name, topic_id, topic_name, max_students, remaining_slots)", $hasRequiredSlotKeys);
+    t("Chuẩn hóa dữ liệu: Đề tài ở trạng thái draft (Topic 4) bị loại khỏi danh sách", !in_array($topicDraftId, array_column($approvedTopicsWithSlots, 'topic_id'), true));
+
+    // 6.7. Kiểm thử các bộ lọc getByPeriod (Lọc status, keyword, lecturer_id)
+    $allDrafts = TopicAssignment::getByPeriod($testPeriodId, ['status' => 'draft']);
+    t("Bộ lọc getByPeriod: Lọc theo status = 'draft' trả về đúng kết quả", count($allDrafts) >= 3);
+
+    $keywordFilter = TopicAssignment::getByPeriod($testPeriodId, ['keyword' => 'SV-TEST-03']);
+    t("Bộ lọc getByPeriod: Lọc theo từ khóa mã sinh viên 'SV-TEST-03' trả về chính xác 1 bản ghi", 
+        count($keywordFilter) === 1 && $keywordFilter[0]['student_code'] === 'SV-TEST-03'
+    );
+
+    $lecturerFilter = TopicAssignment::getByPeriod($testPeriodId, ['lecturer_id' => $lecturer1Id]);
+    t("Bộ lọc getByPeriod: Lọc theo giảng viên trả về đúng các bản ghi của giảng viên đó", count($lecturerFilter) >= 1);
+
+    // 6.8. getByLecturer
+    $gv1Students = TopicAssignment::getByLecturer($lecturer1Id, $testPeriodId);
+    t("Tích hợp (S4-06): getByLecturer trả về danh sách sinh viên GV hướng dẫn", count($gv1Students) >= 1);
+
+    // 6.9. publishPeriodAssignments (Trúc - S4-04)
     $publishedCount = TopicAssignment::publishPeriodAssignments($testPeriodId, $lecturer1Id);
     t("Tích hợp Trúc (S4-04): publishPeriodAssignments công bố kết quả thành công", $publishedCount > 0);
 
     $hasPublished = TopicAssignment::hasPublishedAssignments($testPeriodId);
     t("Tích hợp Trúc (S4-04): hasPublishedAssignments xác nhận đợt đã được công bố", $hasPublished === true);
+
+    // Sau khi publish: Sinh viên gọi với $onlyPublished = true lấy được kết quả công bố chính thức
+    $publishedSvResult = TopicAssignment::getByStudent($studentIds['SV-TEST-03'], $testPeriodId, true);
+    t("Bảo mật phân công: Sinh viên xem được kết quả sau khi đợt đã được công bố chính thức", 
+        $publishedSvResult !== null && $publishedSvResult['status'] === 'published' && !empty($publishedSvResult['lecturer_name'])
+    );
 
     // 6.8. Bảo vệ kết quả đã công bố: Thuật toán tự động từ chối chạy đè lên đợt đã published
     $refusedOverwrite = false;
@@ -443,6 +484,30 @@ try {
 
     t("Controller: GET /assignments cho duyệt Web trả về HTML (không phải JSON thô)", str_contains($htmlIndex, '<!DOCTYPE html>'));
     t("Controller: Trang thông báo trạng thái chờ tích hợp giao diện rõ ràng", str_contains($htmlIndex, 'Đang chờ tích hợp giao diện'));
+
+    // 8.4. Kiểm thử GET /assignments qua API JSON với các bộ lọc (status, keyword, lecturer_id)
+    $_SERVER['HTTP_ACCEPT'] = 'application/json';
+    $_GET['period_id'] = $testPeriodId;
+    $_GET['status'] = 'published';
+    $_GET['keyword'] = 'SV-TEST-03';
+    $_GET['lecturer_id'] = $lecturer1Id;
+
+    ob_start();
+    $controller->index();
+    $jsonFiltered = ob_get_clean();
+    $statusFiltered = http_response_code();
+
+    t("Controller: GET /assignments với bộ lọc qua JSON trả về HTTP 200", $statusFiltered === 200);
+    $dataFiltered = json_decode($jsonFiltered, true);
+    t("Controller: Phản hồi JSON chứa mảng filters hợp lệ", 
+        isset($dataFiltered['filters']['status']) && 
+        $dataFiltered['filters']['status'] === 'published' &&
+        $dataFiltered['filters']['keyword'] === 'SV-TEST-03' &&
+        $dataFiltered['filters']['lecturer_id'] === $lecturer1Id
+    );
+    t("Controller: Phản hồi JSON chứa danh sách approvedTopics với số chỗ", 
+        isset($dataFiltered['approvedTopics']) && is_array($dataFiltered['approvedTopics'])
+    );
 
 } finally {
     // Luôn luôn ROLLBACK toàn bộ dữ liệu kiểm thử để bảo đảm CSDL thực tế sạch 100%

@@ -141,3 +141,100 @@ Trước khi gửi Pull Request hoặc yêu cầu hợp nhất vào nhánh chín
 - [ ] **4. Bảo mật CSRF:** Mọi form POST đều có trường ẩn `_csrf` và được Controller xác thực qua `AuthController::verifyCsrf()`.
 - [ ] **5. Phân quyền:** Các chức năng quản trị đều có `AuthController::requireRole(...)` tại tầng Backend.
 - [ ] **6. Không phá vỡ Sprint 1:** Đăng nhập, đăng xuất, phân quyền admin/student và giao diện Dashboard cũ vẫn hoạt động trơn tru.
+
+---
+
+## 6. Hợp đồng Dữ liệu Sprint 4: Phân hệ Phân công Đề tài & Giảng viên (Data Contract)
+
+### 6.1. Bản đồ Tuyến đường (Route Mapping)
+
+#### A. Tuyến đường Backend đã triển khai hoàn chỉnh:
+| Phương thức | Tuyến đường (Route) | Quyền hạn (RBAC) | Chức năng chính |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/assignments` | Quản trị / Quản lý / Bộ môn | Xem danh sách phân công theo đợt, hỗ trợ lọc theo đợt, trạng thái, giảng viên, từ khóa. Phản hồi Tabler HTML hoặc JSON. |
+| `GET` | `/assignments/preview` | Quản trị / Quản lý / Bộ môn | Chạy mô phỏng (Dry-run) thuật toán đối sánh tự động không ghi vào CSDL. Phản hồi JSON. |
+| `POST` | `/assignments/auto-match` | Quản trị / Quản lý / Bộ môn | Chạy thuật toán đối sánh tự động 3 vòng NV1 $\to$ NV2 $\to$ NV3 và ghi bản ghi `status = 'draft'` vào CSDL. |
+
+#### B. Tuyến đường cần bổ sung trong giai đoạn hoàn thiện phân hệ:
+| Phương thức | Tuyến đường (Route) | Quyền hạn (RBAC) | Chức năng dự kiến |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/assignments/create` | Quản trị / Quản lý / Bộ môn | Form giao diện phân công thủ công cho sinh viên chưa có đề tài. |
+| `POST` | `/assignments/manual` | Quản trị / Quản lý / Bộ môn | Lưu phân công thủ công qua `TopicAssignment::assignManual()`. |
+| `POST` | `/assignments/publish` | Quản trị / Quản lý / Bộ môn | Công bố kết quả phân công cho sinh viên và giảng viên xem (`status = 'published'`). |
+| `POST` | `/assignments/unpublish` | Quản trị / Quản lý / Bộ môn | Rút lại công bố kết quả (`status = 'draft'`) để điều chỉnh tiếp. |
+| `POST` | `/assignments/cancel` | Quản trị / Quản lý / Bộ môn | Hủy phân công của một sinh viên (`status = 'cancelled'`). |
+| `GET` | `/assignments/my-result` | Sinh viên (`student`) | Sinh viên xem đề tài và giảng viên hướng dẫn của mình (chỉ khi đã công bố). |
+| `GET` | `/assignments/my-students`| Giảng viên (`lecturer`) | Giảng viên xem danh sách sinh viên mình hướng dẫn trong đợt (chỉ khi đã công bố). |
+
+---
+
+### 6.2. Quy chuẩn Tên cột trong Cơ sở Dữ liệu
+
+| Bảng CSDL | Tên cột thực tế | Kiểu dữ liệu | Ý nghĩa nghiệp vụ | Lưu ý kỹ thuật |
+| :--- | :--- | :--- | :--- | :--- |
+| **`topic_assignments`** | **`lecturer_id`** | `INT UNSIGNED NOT NULL` | Giảng viên hướng dẫn chính thức | FK $\to$ `users(id)`. **Hệ thống KHÔNG sử dụng `supervisor_id`**. |
+| **`topic_assignments`** | `student_id` | `INT UNSIGNED NOT NULL` | Sinh viên được phân công | FK $\to$ `users(id)`. |
+| **`topic_assignments`** | `topic_id` | `INT UNSIGNED NOT NULL` | Đề tài được phân công | FK $\to$ `topics(id)`. |
+| **`topic_assignments`** | `period_id` | `INT UNSIGNED NOT NULL` | Đợt thực tập / đồ án | FK $\to$ `internship_periods(id)`. |
+| **`topic_assignments`** | `status` | `ENUM('draft','published','cancelled')` | Trạng thái phân công | Mặc định `draft`. |
+| **`topic_assignments`** | `assignment_method` | `ENUM('auto','manual')` | Phương thức phân công | Tự động hoặc thủ công. |
+| **`topics`** | **`proposer_id`** | `INT UNSIGNED NOT NULL` | Người đề xuất / tác giả đề tài | FK $\to$ `users(id)`. **Bảng `topics` KHÔNG có cột `lecturer_id` hay `supervisor_id`**. |
+| **`topics`** | `max_students` | `INT UNSIGNED NOT NULL` | Chỉ tiêu sinh viên tối đa của đề tài | Ràng buộc giới hạn khi phân công. |
+| **`roles`** | `name` | `VARCHAR(50)` | Mã định danh vai trò người dùng | Role giảng viên là **`lecturer`** (không có role `supervisor`). |
+
+> [!WARNING]
+> Tuyệt đối không viết truy vấn `SELECT lecturer_id FROM topics` vì cột này không tồn tại trên bảng `topics`.  
+> Khi cần thông tin người hướng dẫn và chỗ còn trống của đề tài, luôn gọi hàm chuẩn: `TopicAssignment::getApprovedTopicsWithSlots($periodId)` hoặc `Topic::getApprovedWithSlots($periodId)`.
+
+---
+
+### 6.3. Tên các Biến dữ liệu Backend truyền cho Giao diện (View Data)
+
+Tại `TopicAssignmentController::index()` (`GET /assignments`), dữ liệu truyền sang View bao gồm:
+- **`$periods`** (`array`): Danh sách toàn bộ các đợt thực tập/đồ án.
+- **`$currentPeriod`** (`int|null`): ID của đợt đang được chọn để xem.
+- **`$assignments`** (`array`): Danh sách phân công trong đợt đã qua bộ lọc. Mỗi phần tử chứa:
+  - `id`, `period_id`, `student_id`, `topic_id`, `lecturer_id`
+  - `student_code`, `student_name`, `student_email`, `student_phone`
+  - `topic_code`, `topic_name`, `topic_type`, `topic_max_students`
+  - `lecturer_name`, `lecturer_email`
+  - `matched_wish_priority`, `assignment_method`, `status`, `notes`, `assigned_at`
+- **`$unassigned`** (`array`): Danh sách sinh viên đã nộp nguyện vọng nhưng chưa được phân công.
+- **`$approvedTopics`** (`array`): Danh sách đề tài đã duyệt kèm số chỗ còn lại:
+  - `topic_id`, `topic_code`, `topic_name`, `max_students`, `assigned_count`, `remaining_slots`
+  - `lecturer_id`, `lecturer_name`, `proposer_id`, `proposer_name`, `is_proposer_default`
+- **`$statistics`** (`array`): Thống kê tổng số SV, phân công, NV1/NV2/NV3, tỷ lệ hoàn thành.
+- **`$filters`** (`array`): Trạng thái bộ lọc hiện tại:
+  - `['status' => ..., 'keyword' => ..., 'lecturer_id' => ...]`
+- **`$statusLabels`**, **`$statusBadges`**, **`$methodLabels`**, **`$methodBadges`** (`array`): Nhãn và class CSS badge Bootstrap 5 Tabler.
+- **`$isManager`** (`bool`): Cờ quyền quản trị để ẩn/hiện các nút thao tác (Phân công tự động, Công bố, Phân công thủ công).
+- **`$csrf_token`** (`string`): Token bảo mật CSRF dùng cho các biểu mẫu POST.
+- **`$success`**, **`$error`** (`string|null`): Thông báo flash.
+
+---
+
+### 6.4. Quy tắc Bảo mật và Hiển thị Kết quả theo Vai trò
+
+1. **Giao diện Sinh viên (`student`):**
+   - Sinh viên chỉ được phép xem kết quả của chính mình (`student_id = $_SESSION['user_id']`).
+   - **Chỉ hiển thị khi `status = 'published'`**: Nếu đợt phân công đang ở trạng thái dự thảo (`draft`), màn hình sinh viên phải hiển thị thông báo "Kết quả phân công đang được xử lý, chưa công bố chính thức". Tuyệt đối không lộ danh sách dự thảo ra giao diện sinh viên.
+   - Khi gọi Model: sử dụng `TopicAssignment::getByStudent($studentId, $periodId, true)`.
+2. **Giao diện Giảng viên (`lecturer`):**
+   - Giảng viên chỉ được xem danh sách sinh viên mình hướng dẫn (`lecturer_id = $_SESSION['user_id']`).
+   - Khi gọi Model: sử dụng `TopicAssignment::getByLecturer($lecturerId, $periodId, true)` (chỉ lấy sinh viên đã được công bố chính thức).
+3. **Giao diện Cán bộ quản lý / Trưởng bộ môn / Quản trị viên (`admin`, `training_dept`, `department_head`):**
+   - Được xem toàn bộ kết quả ở cả 3 trạng thái: `draft`, `published`, `cancelled`.
+   - Có quyền thực hiện các thao tác chạy phân công tự động, điều chỉnh thủ công, công bố hoặc rút công bố.
+
+---
+
+### 6.5. Các Vấn đề Nghiệp vụ cần Xác nhận
+
+1. **Quy trình Xác nhận trước khi Công bố:**
+   - *Hiện trạng:* CSDL hỗ trợ 2 giai đoạn (`draft` $\to$ `published`).
+   - *Cần xác nhận:* Nhà trường có yêu cầu bắt buộc thêm bước trung gian `confirmed` (Trưởng bộ môn / Ban chủ nhiệm Khoa ký duyệt trước khi Phòng đào tạo công bố) hay không? Nếu có, sẽ bổ sung giá trị `'confirmed'` vào `status ENUM` của bảng `topic_assignments`.
+2. **Tiêu chí Xếp hạng Ưu tiên khi Trùng nguyện vọng:**
+   - *Hiện trạng:* Thuật toán đối sánh tự động sắp xếp ưu tiên theo 3 cấp: (1) Điểm số / GPA giảm dần $\to$ (2) Thời gian nộp đơn sớm hơn $\to$ (3) Mã số sinh viên tăng dần (để bảo đảm tính tất định).
+   - *Cần xác nhận:* Cần văn bản phê duyệt chính thức từ Hội đồng đào tạo về trọng số điểm tích lũy hoặc quy định xét ưu tiên đặc biệt (đối tượng chính sách, sinh viên tài năng).
+3. **Quy định Giảng viên Hướng dẫn cho Đề tài do Doanh nghiệp / Sinh viên đề xuất:**
+   - Khi đề tài do Doanh nghiệp hoặc Sinh viên tự đề xuất (`proposer_id` không mang vai trò `lecturer`), Cán bộ quản lý bắt buộc phải chỉ định một Giảng viên thuộc Khoa làm Giảng viên hướng dẫn chính thức (`lecturer_id`). Model `TopicAssignment::assignManual()` đã hỗ trợ đầy đủ việc tách biệt người đề xuất và giảng viên hướng dẫn.
