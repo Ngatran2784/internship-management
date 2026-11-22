@@ -332,7 +332,15 @@ if ($isManager) {
             return;
         }
 
-        $this->respond('assignments/manual', $data);
+                $baseUrl = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '')), '/');
+
+        $data['submitUrl'] = $baseUrl . '/assignments/manual';
+        $data['canSubmit'] = true;
+        $data['errors']    = [];
+        $data['old']       = ['period_id' => $data['currentPeriod']];
+        $data['csrfToken'] = $data['csrf_token'];
+
+        $this->respond('assignments/create', $data);
     }
 
     /**

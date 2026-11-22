@@ -124,6 +124,7 @@ $router->get('/assignments',             [TopicAssignmentController::class, 'ind
 $router->get('/assignments/preview',     [TopicAssignmentController::class, 'preview']);
 $router->post('/assignments/auto-match', [TopicAssignmentController::class, 'autoMatch']);
 $router->get('/assignments/manual',      [TopicAssignmentController::class, 'manual']);
+$router->get('/assignments/create',      [TopicAssignmentController::class, 'manual']);
 $router->post('/assignments/manual',     [TopicAssignmentController::class, 'assignManual']);
 $router->post('/assignments/cancel',     [TopicAssignmentController::class, 'cancel']);
 $router->get('/assignments/check',       [TopicAssignmentController::class, 'check']);
