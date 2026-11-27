@@ -1,6 +1,6 @@
 -- ==============================================================================
 -- DỰ ÁN: WEBSITE QUẢN LÝ VÀ THEO DÕI TIẾN ĐỘ THỰC TẬP & ĐỒ ÁN SINH VIÊN
--- TÀI LIỆU CẤU TRÚC CƠ SỞ DỮ LIỆU (DATABASE SCHEMA) - SPRINT 1
+-- TÀI LIỆU CẤU TRÚC CƠ SỞ DỮ LIỆU (DATABASE SCHEMA)
 -- Động cơ lưu trữ: InnoDB | Bộ mã ký tự: utf8mb4 | Đối chiếu: utf8mb4_unicode_ci
 -- ==============================================================================
 -- LƯU Ý BẢO MẬT VÀ AN TOÀN DỮ LIỆU:
@@ -109,7 +109,7 @@ CREATE TABLE IF NOT EXISTS `topics` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Quản lý danh mục các đề tài thực tập và đồ án tốt nghiệp sinh viên';
 
 -- ==============================================================================
--- ĐỊNH HƯỚNG CÁC PHÂN HỆ TIẾP THEO (DỰ KIẾN TRIỂN KHAI TỪ SPRINT 4+):
+-- ĐỊNH HƯỚNG CÁC PHÂN HỆ TIẾP THEO:
 -- - student_profiles (Thông tin chi tiết sinh viên: lớp, ngành, GPA, CV)
 -- - lecturer_profiles (Thông tin giảng viên: chuyên môn, hướng nghiên cứu, quota)
 -- - enterprise_profiles (Thông tin doanh nghiệp: địa chỉ, lĩnh vực, liên hệ)

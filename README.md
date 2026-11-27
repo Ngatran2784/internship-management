@@ -107,10 +107,14 @@ internship-management/
 │   ├── internship_management.sql   # Tệp CSDL tổng hợp toàn diện (7 bảng + dữ liệu mẫu)
 │   ├── internship_management_full.sql # Bản sao đồng bộ của tệp CSDL tổng hợp
 │   └── schema.sql                  # Kịch bản DDL tạo bảng (roles, users, user_roles)
-├── docs/                           # Tài liệu kỹ thuật
-│   ├── database-design.md          # Thiết kế ERD & mô tả cấu trúc bảng
-│   ├── git-workflow.md             # Quy trình phân nhánh Git Flow & Pull Request
-│   └── sprint-1.md                 # Báo cáo nghiệm thu kỹ thuật Sprint 1
+├── docs/                           # Tài liệu kỹ thuật chuẩn mực (7 tài liệu)
+│   ├── REQUIREMENTS.md             # Đặc tả yêu cầu nghiệp vụ 6 vai trò
+│   ├── DATABASE_DESIGN.md          # Thiết kế CSDL 13 bảng 3NF & sơ đồ ERD
+│   ├── SYSTEM_ARCHITECTURE.md      # Kiến trúc thuần MVC, Router & RBAC
+│   ├── INTEGRATION_GUIDE.md        # Hướng dẫn tích hợp cho lập trình viên
+│   ├── USER_GUIDE.md               # Cẩm nang sử dụng cho 6 tác nhân
+│   ├── INSTALLATION_GUIDE.md       # Hướng dẫn cài đặt và triển khai XAMPP
+│   └── TEST_CASES.md               # Danh mục ca kiểm thử toàn diện
 ├── public/                         # Thư mục gốc công khai của Web Server (Entry Point)
 │   ├── assets/                     # Tài nguyên tĩnh nội bộ (Tabler CSS, JS, Tabler Icons)
 │   ├── .htaccess                   # Rewrite URL Apache về index.php & chặn duyệt thư mục
@@ -282,78 +286,38 @@ Hệ thống sẽ tự động chuyển hướng đến màn hình Đăng nhập
 
 ---
 
-## VI. KẾ HOẠCH PHÁT TRIỂN 7 SPRINT
+## VI. CÁC PHÂN HỆ CHỨC NĂNG CỐT LÕI
 
-Dự án được xây dựng và triển khai theo mô hình Agile / Scrum bao gồm 7 Sprint hoàn chỉnh:
+Dự án được thiết kế đồng bộ với các phân hệ chức năng:
 
 ```mermaid
 flowchart LR
-    S1["Sprint 1\nCore & Auth\n(Hoàn thành)"] --> S2["Sprint 2\nQuản lý User & RBAC"]
-    S2 --> S3["Sprint 3\nQuản lý Đợt & Đề tài"]
-    S3 --> S4["Sprint 4\nĐăng ký & Phân công"]
-    S4 --> S5["Sprint 5\nTiến độ & Báo cáo"]
-    S5 --> S6["Sprint 6\nĐánh giá Rubric"]
-    S6 --> S7["Sprint 7\nDoanh nghiệp & Thống kê"]
+    F1["1. Xác thực & Phân quyền"] --> F2["2. Quản lý Đợt & Đề tài"]
+    F2 --> F3["3. Đăng ký & Phân công"]
+    F3 --> F4["4. Tiến độ & Nhật ký"]
+    F4 --> F5["5. Báo cáo & Đánh giá"]
 ```
 
-### Sprint 1: Khởi tạo Kiến trúc MVC Thuần, Cơ sở dữ liệu & Xác thực (ĐÃ HOÀN THÀNH)
-- [x] Thiết lập kiến trúc MVC thuần trên PHP 8.2, cơ chế Autoload PSR-4.
-- [x] Xây dựng Singleton `Database.php` kết nối PDO an toàn, ẩn thông tin nhạy cảm.
-- [x] Xây dựng `Router.php` hỗ trợ GET, POST, HEAD, tự chuẩn hóa URL trong thư mục con XAMPP.
-- [x] Xây dựng Base `Controller.php` tích hợp hàm `render()`, `redirect()` và `escape()` chống XSS.
-- [x] Thiết kế ERD tổng thể và khởi tạo Schema DDL 3 bảng nền tảng: `roles`, `users`, `user_roles`.
-- [x] Tích hợp giao diện Tabler Bootstrap 5 chính thức, font Inter và icon Tabler Icons nội bộ.
-- [x] Triển khai xác thực người dùng: Đăng nhập băm Bcrypt, chống timing attack, token bảo vệ CSRF.
-- [x] Hoàn thiện phân quyền Sidebar và Dashboard chuyên biệt cho Quản trị viên và Sinh viên.
-- [x] Xây dựng bộ kiểm thử tự động đạt kết quả 100% PASS (20 test core + 44 test auth).
+### Các phân hệ chức năng đã hoàn thành
+- [x] **Xác thực & Phân quyền Đa vai trò (Multi-Role RBAC):** Đăng nhập an toàn băm Bcrypt, bảo vệ CSRF, hỗ trợ 6 vai trò chính và tài khoản kiêm nhiệm.
+- [x] **Quản lý Tài khoản & Hồ sơ:** Thêm, sửa, khóa/mở khóa tài khoản người dùng, tải ảnh đại diện an toàn.
+- [x] **Quản lý Đợt thực tập / Đồ án:** Vòng đời đợt (draft/active/closed), kiểm soát thời hạn đăng ký.
+- [x] **Quản lý & Xét duyệt Đề tài:** Giảng viên/Doanh nghiệp đề xuất, Trưởng bộ môn phê duyệt, lịch sử xét duyệt.
+- [x] **Đăng ký Nguyện vọng:** Sinh viên đăng ký tối đa 3 nguyện vọng theo thứ tự ưu tiên trong đợt đang mở.
+- [x] **Thuật toán Đối sánh & Phân công:** Tự động ghép cặp theo điểm GPA và thời gian nộp, điều chỉnh thủ công, công bố kết quả toàn trường.
+- [x] **Quản lý Mốc tiến độ (Milestones):** Quản lý mốc thời gian, kiểm tra logic thời hạn, tự động phát hiện quá hạn, cung cấp REST API thống kê tiến độ.
+- [x] **Nhật ký & Báo cáo Đa phiên bản:** Nhật ký tuần độc nhất theo phân công, upload file an toàn < 20MB (.pdf, .docx, .zip), lưu lịch sử phiên bản v1, v2... không ghi đè, ghi nhận nộp muộn is_late, nhận xét và yêu cầu nộp lại.
 
-### Sprint 2: Quản lý Người dùng, Phân quyền Đa vai trò & Hồ sơ cá nhân
-- [ ] Xây dựng giao diện CRUD quản lý danh sách người dùng (`app/Views/users/index.php`).
-- [ ] Chức năng thêm mới, chỉnh sửa, khóa/mở khóa tài khoản người dùng theo trạng thái.
-- [ ] Chức năng gán/hủy đa vai trò cho người dùng (Một người dùng có thể vừa là Giảng viên vừa là Trưởng bộ môn).
-- [ ] Hoàn thiện giao diện Hồ sơ cá nhân (`app/Views/users/profile.php`): cập nhật thông tin liên hệ, đổi mật khẩu an toàn.
-- [ ] Cơ chế phân trang (Pagination), tìm kiếm theo họ tên/mã số và lọc theo vai trò.
+---
 
-### Sprint 3: Quản lý Đợt thực tập/Đồ án & Quản lý Đề tài
-- [x] Thiết kế chuẩn hóa bảng `internship_periods` và hoàn thiện CRUD quản lý đợt thực tập/đồ án.
-- [x] Thiết kế CSDL bảng `topics` (`database/migrations/create_topics_table.sql` & tích hợp `schema.sql`).
-- [x] Xây dựng Model `Topic.php` hỗ trợ đầy đủ bộ lọc, tìm kiếm, kiểm tra ràng buộc, mã đề tài duy nhất và phân quyền `canEdit()`.
-- [x] Xây dựng Controller `TopicController.php` xử lý CRUD, phân quyền vai trò (Admin, Giảng viên, Sinh viên), bảo vệ CSRF và cơ chế JSON fallback.
-- [x] Đăng ký đầy đủ các route quản lý đề tài trong Front Controller `public/index.php`.
-- [x] Xây dựng bộ dữ liệu mẫu 10 đề tài thực tập & đồ án an toàn, idempotent (`database/seeds/topics.sql`).
-- [x] Viết tài liệu hợp đồng kỹ thuật và bàn giao module (`docs/topic-module-contract.md`).
-- [x] Xây dựng bộ kiểm thử tự động 50 test cases đạt kết quả 100% PASS (`tests/test_topics.php`).
-- [x] Xây dựng giao diện danh sách, tạo, sửa và chi tiết đề tài (`app/Views/topics/`).
-- [x] Hoàn thiện gửi duyệt, phê duyệt, từ chối và lịch sử xét duyệt đề tài.
-- [x] Bổ sung menu đề tài theo vai trò và trạng thái route.
-- [x] S3-01: Hoàn thiện CSDL đề tài, phê duyệt và nguyện vọng (`topics`, `topic_approvals`, `topic_wishes`).
-- [x] S3-02: Hoàn thiện CRUD đề tài giảng viên và phân quyền đề xuất.
-- [x] S3-03: Hoàn thiện quy trình xét duyệt/từ chối và lịch sử xét duyệt đề tài (`app/Models/TopicApproval.php`).
-- [x] S3-04: Hoàn thiện nghiệp vụ đăng ký và sắp xếp nguyện vọng đề tài sinh viên (`app/Models/TopicWish.php`).
-- [x] S3-05: Hoàn thiện giao diện quản lý và xét duyệt đề tài (`app/Views/topics/`).
-- [x] S3-06: Hoàn thiện giao diện đăng ký nguyện vọng cho sinh viên (`app/Views/topic_wishes/`).
-- [x] S3-07: Bộ kiểm thử tự động toàn diện Sprint 3 đạt 250 assertions 100% PASS (hạn, trùng, quyền, rollback).
+## VII. TÀI LIỆU KỸ THUẬT & HƯỚNG DẪN CHI TIẾT
 
-### Sprint 4: Đăng ký Nguyện vọng & Ghép cặp / Phân công Giảng viên
-- [ ] Sinh viên tra cứu danh mục đề tài đang mở và đăng ký nguyện vọng ưu tiên (Nguyện vọng 1, 2, 3).
-- [ ] Chức năng duyệt nguyện vọng và ghép cặp sinh viên với đề tài (tự động theo điểm số hoặc thủ công).
-- [ ] Bộ môn phân công Giảng viên hướng dẫn (GVHD) và Giảng viên phản biện (GVPB) cho từng đề tài.
-- [ ] Thông báo kết quả phân công chính thức đến Giảng viên và Sinh viên.
+Hệ thống tài liệu hoàn chỉnh của dự án được lưu trữ tập trung tại thư mục `docs/`:
 
-### Sprint 5: Theo dõi Tiến độ, Nhật ký Thực tập & Nộp Báo cáo Định kỳ
-- [ ] Thiết lập bảng kế hoạch làm việc (Milestones) theo tuần trong suốt đợt thực tập/đồ án.
-- [ ] Sinh viên cập nhật nhật ký thực tập hàng tuần (công việc đã làm, khó khăn, dự kiến tiếp theo).
-- [ ] Chức năng upload tệp báo cáo định kỳ (PDF, Word, ZIP) an toàn với giới hạn dung lượng và kiểm tra định dạng.
-- [ ] Giảng viên hướng dẫn xem xét, nhận xét phản hồi trực tiếp và xác nhận tiến độ tuần của sinh viên.
-
-### Sprint 6: Tiêu chí Đánh giá Rubric & Chấm điểm Đồ án / Đánh giá Doanh nghiệp
-- [ ] Cấu hình bộ tiêu chí đánh giá chuẩn hóa (Rubric) theo thang điểm và trọng số quy định.
-- [ ] Biểu mẫu dành cho Doanh nghiệp tiếp nhận: Nhận xét thái độ, kỹ năng thực tế và chấm điểm thực tập.
-- [ ] Giảng viên hướng dẫn và Giảng viên phản biện chấm điểm đồ án theo từng tiêu chí Rubric.
-- [ ] Tổng hợp điểm số tự động, xếp loại đánh giá và gửi kết quả về Phòng đào tạo.
-
-### Sprint 7: Quản lý Đơn vị Thực tập, Tin tuyển dụng, Thống kê & Báo cáo Tổng kết
-- [ ] Quản lý danh bạ doanh nghiệp đối tác, liên hệ người phụ trách và địa điểm thực tập.
-- [ ] Cổng thông tin tin tuyển dụng thực tập dành cho sinh viên.
-- [ ] Dashboard thống kê trực quan (biểu đồ tỷ lệ sinh viên hoàn thành, phân bố điểm, doanh nghiệp tiếp nhận nhiều nhất).
-- [ ] Chức năng xuất dữ liệu báo cáo tổng kết ra file Excel và PDF phục vụ công tác lưu trữ của Nhà trường.
+- [Tài liệu Đặc tả Yêu cầu Nghiệp vụ (REQUIREMENTS.md)](docs/REQUIREMENTS.md)
+- [Bản Thiết kế Cơ sở Dữ liệu 3NF (DATABASE_DESIGN.md)](docs/DATABASE_DESIGN.md)
+- [Kiến trúc Hệ thống Phần mềm (SYSTEM_ARCHITECTURE.md)](docs/SYSTEM_ARCHITECTURE.md)
+- [Hướng dẫn Tích hợp & Phát triển (INTEGRATION_GUIDE.md)](docs/INTEGRATION_GUIDE.md)
+- [Hướng dẫn Sử dụng Hệ thống (USER_GUIDE.md)](docs/USER_GUIDE.md)
+- [Hướng dẫn Cài đặt & Triển khai (INSTALLATION_GUIDE.md)](docs/INSTALLATION_GUIDE.md)
+- [Danh sách Ca kiểm thử Hệ thống (TEST_CASES.md)](docs/TEST_CASES.md)

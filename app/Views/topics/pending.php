@@ -1,7 +1,7 @@
 <?php
 $pageTitle = 'Đề tài chờ duyệt';
 $pageHeading = 'Quản lý đề tài chờ xét duyệt';
-$pageDescription = 'HỆ THỐNG QUẢN LÝ THỰC TẬP VÀ ĐỒ ÁN SINH VIÊN';
+$pageDescription = 'Danh sách các đề tài đang chờ phê duyệt từ Trưởng bộ môn hoặc Phòng Đào tạo';
 $activePage = 'topics';
 require dirname(__DIR__) . '/layouts/header.php';
 
@@ -30,7 +30,7 @@ $typeLabels = $typeLabels ?? [];
                         <option value="">Tất cả các đợt</option>
                         <?php foreach ($periods as $period): ?>
                             <option value="<?= (int)$period['id'] ?>" <?= (string)($filters['period_id'] ?? '') === (string)$period['id'] ? 'selected' : '' ?>>
-                                <?= $escape($period['code'] . ' — ' . $period['name']) ?>
+                                [<?= $escape($period['code']) ?>] <?= $escape($period['name']) ?>
                             </option>
                         <?php endforeach; ?>
                     </select>

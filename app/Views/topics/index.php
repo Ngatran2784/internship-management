@@ -6,14 +6,16 @@ $isEnterpriseUser = in_array('enterprise', $userRoles, true) && !in_array('admin
 if ($isMyTopics) {
     $pageTitle = $isEnterpriseUser ? 'Đề tài đã đề xuất' : 'Đề tài của tôi';
     $pageHeading = $isEnterpriseUser ? 'Đề tài đã đề xuất' : 'Đề tài của tôi';
+    $pageDescription = 'Danh sách các đề tài do tài khoản của bạn đề xuất';
 } elseif ($isEnterpriseUser) {
     $pageTitle = 'Tra cứu đề tài thực tập';
     $pageHeading = 'Tra cứu đề tài thực tập';
+    $pageDescription = 'Tra cứu danh sách đề tài thực tập doanh nghiệp';
 } else {
     $pageTitle = 'Quản lý đề tài';
     $pageHeading = 'Danh sách đề tài thực tập & đồ án';
+    $pageDescription = 'Tra cứu và quản lý các đề tài thực tập và đồ án theo đợt';
 }
-$pageDescription = 'HỆ THỐNG QUẢN LÝ THỰC TẬP VÀ ĐỒ ÁN SINH VIÊN';
 $activePage = 'topics';
 require dirname(__DIR__) . '/layouts/header.php';
 
@@ -64,7 +66,7 @@ $queryFilters = array_filter([
                         <?php foreach ($periods as $period): ?>
                             <option value="<?= (int)$period['id'] ?>"
                                 <?= (string)($filters['period_id'] ?? '') === (string)$period['id'] ? 'selected' : '' ?>>
-                                <?= $escape($period['code'] . ' — ' . $period['name']) ?>
+                                [<?= $escape($period['code']) ?>] <?= $escape($period['name']) ?>
                             </option>
                         <?php endforeach; ?>
                     </select>

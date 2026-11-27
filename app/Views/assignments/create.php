@@ -3,6 +3,7 @@ $pageTitle = 'Phân công thủ công';
 $pageHeading = 'Phân công thủ công';
 $pageDescription = 'PHÂN CÔNG SINH VIÊN VÀO ĐỀ TÀI';
 $activePage = 'assignments';
+$hidePageHeader = true;
 require dirname(__DIR__) . '/layouts/header.php';
 
 $escape = static fn(mixed $value): string => htmlspecialchars(
@@ -34,19 +35,28 @@ $canManage = !empty(array_intersect($roles, ['admin', 'training_dept', 'departme
     </div>
 
     <?php if (!empty($success)): ?>
-        <div class="alert alert-success" role="status"><?= $escape($success) ?></div>
+        <div class="alert alert-success alert-dismissible d-flex align-items-center gap-2" role="status">
+            <i class="ti ti-circle-check fs-3"></i>
+            <div><?= $escape($success) ?></div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Đóng"></button>
+        </div>
     <?php endif; ?>
-    <?php if (!empty($error)): ?>
-        <div class="alert alert-danger" role="alert"><?= $escape($error) ?></div>
-    <?php endif; ?>
-    <?php if ($errors): ?>
-        <div class="alert alert-danger" role="alert">
-            <div class="fw-semibold mb-1">Vui lòng kiểm tra lại thông tin:</div>
-            <ul class="mb-0">
-                <?php foreach ($errors as $validationError): ?>
-                    <li><?= $escape($validationError) ?></li>
-                <?php endforeach; ?>
-            </ul>
+    <?php if (!empty($error) || !empty($errors)): ?>
+        <div class="alert alert-danger alert-dismissible d-flex align-items-start gap-2" role="alert">
+            <i class="ti ti-alert-circle fs-3 flex-shrink-0 mt-1"></i>
+            <div>
+                <?php if (!empty($error)): ?>
+                    <div class="fw-semibold"><?= $escape($error) ?></div>
+                <?php endif; ?>
+                <?php if (!empty($errors)): ?>
+                    <ul class="mb-0 mt-1 ps-3">
+                        <?php foreach ($errors as $validationError): ?>
+                            <li><?= $escape($validationError) ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                <?php endif; ?>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Đóng"></button>
         </div>
     <?php endif; ?>
 
@@ -75,7 +85,7 @@ $canManage = !empty(array_intersect($roles, ['admin', 'training_dept', 'departme
                                 <?php $periodId = (int)($period['id'] ?? 0); ?>
                                 <option value="<?= $periodId ?>"
                                     <?= (string)($old['period_id'] ?? '') === (string)$periodId ? 'selected' : '' ?>>
-                                    <?= $escape($period['code'] ?? '') ?> — <?= $escape($period['name'] ?? '') ?>
+                                    [<?= $escape($period['code'] ?? '') ?>] <?= $escape($period['name'] ?? '') ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>

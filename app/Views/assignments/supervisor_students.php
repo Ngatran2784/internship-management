@@ -3,6 +3,7 @@ $pageTitle = 'Sinh viên hướng dẫn';
 $pageHeading = 'Sinh viên hướng dẫn';
 $pageDescription = 'DANH SÁCH SINH VIÊN ĐƯỢC PHÂN CÔNG HƯỚNG DẪN';
 $activePage = 'supervisor-students';
+$hidePageHeader = true;
 require dirname(__DIR__) . '/layouts/header.php';
 
 $escape = static fn(mixed $value): string => htmlspecialchars(
@@ -54,7 +55,7 @@ foreach ($periods as $period) {
                         <?php foreach ($periods as $period): ?>
                             <?php $periodId = (int)($period['id'] ?? 0); ?>
                             <option value="<?= $periodId ?>" <?= $selectedPeriod === $periodId ? 'selected' : '' ?>>
-                                <?= $escape($period['code'] ?? '') ?> — <?= $escape($period['name'] ?? '') ?>
+                                [<?= $escape($period['code'] ?? '') ?>] <?= $escape($period['name'] ?? '') ?>
                             </option>
                         <?php endforeach; ?>
                     </select>

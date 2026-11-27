@@ -1,7 +1,7 @@
 <?php
 $pageTitle       = 'Chỉnh sửa đợt';
 $pageHeading     = 'Chỉnh sửa đợt thực tập';
-$pageDescription = 'HỆ THỐNG QUẢN LÝ THỰC TẬP VÀ ĐỒ ÁN SINH VIÊN';
+$pageDescription = 'Cập nhật thông tin và điều chỉnh cấu hình đợt';
 $activePage      = 'periods';
 require dirname(__DIR__) . '/layouts/header.php';
 

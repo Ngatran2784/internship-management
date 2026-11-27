@@ -1,6 +1,6 @@
 <?php
 /**
- * AUTOMATED TESTING SCRIPT - SPRINT 1 CORE FRAMEWORK
+ * AUTOMATED TESTING SCRIPT - CORE FRAMEWORK
  * Chạy bằng lệnh: C:\xampp\php\php.exe tests/test_core.php
  */
 
@@ -10,7 +10,7 @@ $projectRoot = dirname(__DIR__);
 require_once $projectRoot . '/public/index.php'; // Đã bao gồm autoloader
 
 echo "\n======================================================\n";
-echo "   KIỂM THỬ HỆ THỐNG TỰ ĐỘNG - SPRINT 1 CORE FRAMEWORK\n";
+echo "   KIỂM THỬ HỆ THỐNG TỰ ĐỘNG - CORE FRAMEWORK\n";
 echo "======================================================\n\n";
 
 $passCount = 0;

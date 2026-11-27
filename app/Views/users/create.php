@@ -1,7 +1,7 @@
 <?php
 $pageTitle       = 'Tạo tài khoản mới';
 $pageHeading     = 'Tạo tài khoản mới';
-$pageDescription = 'HỆ THỐNG QUẢN LÝ THỰC TẬP VÀ ĐỒ ÁN SINH VIÊN';
+$pageDescription = 'Thêm tài khoản người dùng và gán vai trò';
 $activePage      = 'users';
 require dirname(__DIR__) . '/layouts/header.php';
 

@@ -1,7 +1,7 @@
 <?php
-$pageTitle = 'Nguyện vọng đề tài';
-$pageHeading = 'Đăng ký nguyện vọng đề tài';
-$pageDescription = 'HỆ THỐNG QUẢN LÝ THỰC TẬP VÀ ĐỒ ÁN SINH VIÊN';
+$pageTitle = 'Nguyện vọng đề tài của tôi';
+$pageHeading = 'Nguyện vọng của tôi';
+$pageDescription = 'Danh sách các nguyện vọng đề tài đã đăng ký theo đợt';
 $activePage = 'wishes';
 require dirname(__DIR__) . '/layouts/header.php';
 

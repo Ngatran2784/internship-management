@@ -34,6 +34,7 @@ use App\Controllers\TopicController;
 use App\Controllers\TopicApprovalController;
 use App\Controllers\TopicWishController;
 use App\Controllers\TopicAssignmentController;
+use App\Controllers\MilestoneController;
 
 // 2. KHỞI TẠO ROUTER
 $router = new Router();
@@ -134,6 +135,19 @@ $router->get('/assignments/supervisor-students', [TopicAssignmentController::cla
 $router->get('/assignments/enterprise-students', [TopicAssignmentController::class, 'enterpriseStudents']);
 $router->get('/assignments/my-result',           [TopicAssignmentController::class, 'myResult']);
 $router->get('/assignments/result',              [TopicAssignmentController::class, 'myResult']);
+
+// --- Quản lý Mốc tiến độ (Milestones) ---
+$router->get('/milestones',                     [MilestoneController::class, 'index']);
+$router->get('/milestones/detail',              [MilestoneController::class, 'show']);
+$router->get('/milestones/show',                [MilestoneController::class, 'show']);
+$router->get('/milestones/create',              [MilestoneController::class, 'create']);
+$router->post('/milestones/create',             [MilestoneController::class, 'store']);
+$router->post('/milestones',                    [MilestoneController::class, 'store']);
+$router->get('/milestones/edit',                [MilestoneController::class, 'edit']);
+$router->post('/milestones/edit',               [MilestoneController::class, 'update']);
+$router->post('/milestones/update',             [MilestoneController::class, 'update']);
+$router->post('/milestones/delete',             [MilestoneController::class, 'delete']);
+$router->get('/api/milestones/progress',        [MilestoneController::class, 'progressApi']);
 
 // Hỗ trợ alias trực tiếp /topics/{id} sang xem chi tiết đề tài
 if (preg_match('#/topics/(\d+)$#', $reqPath, $topicMatches)) {

@@ -1,7 +1,7 @@
 <?php
 $pageTitle       = 'Chi tiết đợt thực tập';
 $pageHeading     = 'Chi tiết đợt thực tập';
-$pageDescription = 'HỆ THỐNG QUẢN LÝ THỰC TẬP VÀ ĐỒ ÁN SINH VIÊN';
+$pageDescription = 'Thông tin chi tiết và thiết lập đợt thực tập / đồ án';
 $activePage      = 'periods';
 require dirname(__DIR__) . '/layouts/header.php';
 
@@ -253,7 +253,8 @@ $currentTransitions = $statusTransitions[$status] ?? [];
                     </h4>
                 </div>
                 <div class="card-body p-0">
-                    <table class="table table-sm mb-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
                         <tbody>
                             <tr>
                                 <td class="text-secondary ps-3">ID</td>
@@ -289,6 +290,7 @@ $currentTransitions = $statusTransitions[$status] ?? [];
                             <?php endif; ?>
                         </tbody>
                     </table>
+                    </div>
                 </div>
             </div>
 

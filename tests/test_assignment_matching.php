@@ -350,7 +350,7 @@ try {
         $sv3Assignment !== null && (int)$sv3Assignment['topic_id'] === $topic1Id
     );
 
-    // 6.6. getApprovedTopicsWithSlots & Topic::getApprovedWithSlots (Nga - Chuẩn hóa dữ liệu Sprint 4)
+    // 6.6. getApprovedTopicsWithSlots & Topic::getApprovedWithSlots (Chuẩn hóa dữ liệu phân công)
     $approvedTopicsWithSlots = TopicAssignment::getApprovedTopicsWithSlots($testPeriodId);
     $proxyApprovedTopics = Topic::getApprovedWithSlots($testPeriodId);
     t("Chuẩn hóa dữ liệu: getApprovedTopicsWithSlots trả về danh sách đề tài đã duyệt", count($approvedTopicsWithSlots) >= 3);
@@ -521,7 +521,7 @@ t("Dữ liệu kiểm thử đã được ROLLBACK an toàn tuyệt đối", tru
 
 echo PHP_EOL;
 echo "------------------------------------------------------------------------------" . PHP_EOL;
-echo "KẾT QUẢ KIỂM THỬ SPRINT 4 (CSDL & THUẬT TOÁN ĐỐI SÁNH): {$passed} PASS, {$failed} FAIL." . PHP_EOL;
+echo "KẾT QUẢ KIỂM THỬ THUẬT TOÁN ĐỐI SÁNH PHÂN CÔNG: {$passed} PASS, {$failed} FAIL." . PHP_EOL;
 echo "==============================================================================" . PHP_EOL . PHP_EOL;
 
 if ($failed > 0) {

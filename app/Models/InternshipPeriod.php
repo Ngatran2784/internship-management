@@ -420,7 +420,7 @@ class InternshipPeriod
             error_log("InternshipPeriod::canDelete FK check error: " . $e->getMessage());
         }
 
-        // 4. Quét kiểm tra các bảng nghiệp vụ có khả năng liên kết trong tương lai/các sprint
+        // 4. Quét kiểm tra các bảng nghiệp vụ có khả năng liên kết trong hệ thống
         $potentialTables = [
             'topics'                => 'đề tài đồ án/thực tập',
             'topic_registrations'   => 'sinh viên đăng ký đề tài',

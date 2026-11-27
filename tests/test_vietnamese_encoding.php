@@ -109,6 +109,45 @@ try {
     $wishesUpdated = TopicWish::getByStudentAndPeriod($testStudentId, $testPeriodId);
     t("Cập nhật ghi chú tiếng Việt thành công", ($wishesUpdated[0]['note'] ?? '') === $updatedString);
 
+    // 4. Kiểm tra mã hóa tiếng Việt và comment của phân hệ Mốc tiến độ & Báo cáo
+    $milestoneTables = ['milestones', 'internship_logs', 'internship_reports', 'report_submissions', 'report_reviews'];
+    foreach ($milestoneTables as $t) {
+        $stmtTbl = $pdo->prepare("SELECT TABLE_COLLATION, TABLE_COMMENT FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?");
+        $stmtTbl->execute([$t]);
+        $tblInfo = $stmtTbl->fetch(PDO::FETCH_ASSOC);
+        $comment = $tblInfo['TABLE_COMMENT'] ?? '';
+        t("Bảng `{$t}` có collation utf8mb4_unicode_ci và comment tiếng Việt sạch", 
+            $tblInfo['TABLE_COLLATION'] === 'utf8mb4_unicode_ci' && !preg_match('/[├ß─ã│╗║┐¼]/u', $comment) && stripos($comment, 'sprint') === false
+        );
+    }
+
+    // 5. Kiểm tra comment các cột trong bảng milestones
+    $stmtCols = $pdo->query("SELECT COLUMN_NAME, COLUMN_COMMENT FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'milestones' AND COLUMN_COMMENT != ''");
+    $colCommentsOk = true;
+    while ($rCol = $stmtCols->fetch(PDO::FETCH_ASSOC)) {
+        if (preg_match('/[├ß─ã│╗║┐¼]/u', $rCol['COLUMN_COMMENT'])) {
+            $colCommentsOk = false;
+        }
+    }
+    t("Toàn bộ comment các cột trong bảng `milestones` hiển thị tiếng Việt chuẩn", $colCommentsOk);
+
+    // 6. Kiểm tra nội dung mô tả tiếng Việt của các mốc tiến độ (milestones)
+    $stmtDesc = $pdo->query("SELECT id, description FROM milestones WHERE description IS NOT NULL");
+    $descOk = true;
+    while ($rDesc = $stmtDesc->fetch(PDO::FETCH_ASSOC)) {
+        if (preg_match('/[├ß─│╗║┐¼]/u', $rDesc['description'])) {
+            $descOk = false;
+        }
+    }
+    t("Toàn bộ mô tả (description) trong bảng `milestones` không bị lỗi font (Mojibake)", $descOk);
+
+    // 7. Kiểm tra phân biệt trạng thái chung của Milestone với tiến độ của sinh viên
+    $stmtM1 = $pdo->query("SELECT status FROM milestones WHERE id = 1");
+    $m1Status = $stmtM1->fetchColumn();
+    $stmtR1 = $pdo->query("SELECT status FROM internship_reports WHERE milestone_id = 1 AND student_id = 6");
+    $r1Status = $stmtR1->fetchColumn();
+    t("Trạng thái chung của milestone và trạng thái báo cáo cá nhân của SV độc lập nhau", !empty($m1Status) && !empty($r1Status));
+
 } finally {
     $pdo->rollBack();
 }

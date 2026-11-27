@@ -3,7 +3,7 @@ $userRoles = $_SESSION['roles'] ?? [];
 $isEnterpriseUser = in_array('enterprise', $userRoles, true) && !in_array('admin', $userRoles, true);
 $pageTitle = $isEnterpriseUser ? 'Đề xuất đề tài thực tập' : 'Đề xuất đề tài';
 $pageHeading = $isEnterpriseUser ? 'Đề xuất đề tài thực tập' : 'Tạo mới đề tài';
-$pageDescription = 'HỆ THỐNG QUẢN LÝ THỰC TẬP VÀ ĐỒ ÁN SINH VIÊN';
+$pageDescription = 'Khai báo thông tin đề tài thực tập hoặc đồ án mới';
 $activePage = 'topics';
 require dirname(__DIR__) . '/layouts/header.php';
 

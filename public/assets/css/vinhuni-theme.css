@@ -405,7 +405,7 @@ a:hover {
   }
 }
 
-/* Sprint 4: keep assignment tables readable without changing shared page tables. */
+/* Keep assignment tables readable without changing shared page tables. */
 .assignment-page .assignment-table {
   min-width: 60rem;
 }

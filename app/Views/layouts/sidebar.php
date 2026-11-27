@@ -45,7 +45,8 @@ $isUsersGroup = ($isUserList || $isUserCreate || $isProfile || str_starts_with($
 // Nhóm Đợt thực tập & Đồ án
 $isPeriodList   = ($currentRoute === '/periods' || $currentRoute === '/periods/detail' || $currentRoute === '/periods/edit');
 $isPeriodCreate = ($currentRoute === '/periods/create');
-$isPeriodsGroup = ($isPeriodList || $isPeriodCreate || str_starts_with($currentRoute, '/periods'));
+$isMilestones   = str_starts_with($currentRoute, '/milestones') || ($activePage ?? '') === 'milestones';
+$isPeriodsGroup = ($isPeriodList || $isPeriodCreate || str_starts_with($currentRoute, '/periods') || $isMilestones);
 
 // Nhóm Đề tài: giữ duy nhất một mục active trên mỗi route.
 $isTopicMy = (str_starts_with($currentRoute, '/topics') && isset($_GET['proposer']) && $_GET['proposer'] === 'me');
@@ -57,18 +58,19 @@ $isWishes = str_starts_with($currentRoute, '/wishes');
 $isMyResult = ($currentRoute === '/assignments/my-result' || $currentRoute === '/assignments/result' || ($activePage ?? '') === 'my-result' || ($activePage ?? '') === 'assignment-result');
 $isSupervisorStudents = str_starts_with($currentRoute, '/assignments/my-students') || str_starts_with($currentRoute, '/assignments/supervisor-students');
 $isEnterpriseStudents = str_starts_with($currentRoute, '/assignments/enterprise-students');
-$isAssignments = str_starts_with($currentRoute, '/assignments') && !$isMyResult && !$isSupervisorStudents && !$isEnterpriseStudents;
+$isAssignmentsGroup = str_starts_with($currentRoute, '/assignments') && !$isMyResult && !$isSupervisorStudents && !$isEnterpriseStudents;
+$isAssignments = $isAssignmentsGroup && ($currentRoute !== '/assignments/create');
 
 if (!function_exists('renderDemoItem')) {
     /**
-     * Helper hàm render một mục menu dự kiến sau Sprint 4
+     * Helper hàm render một mục menu danh mục chức năng
      * Hiển thị đồng nhất tên mục và biểu tượng, không kèm badge/tooltip hay hộp thoại popup
      */
     function renderDemoItem(
         string $title,
         string $icon,
         string $status = '',
-        string $sprint = '',
+        string $meta = '',
         string $desc = '',
         ?string $existing = null,
         ?string $link = null,
@@ -172,7 +174,7 @@ if (!function_exists('renderDemoItem')) {
                                     'Vai trò và phân quyền',
                                     'ti-shield-lock',
                                     'dang_trien_khai',
-                                    'Sprint 1 & Mở rộng',
+                                    'Phân quyền chi tiết',
                                     'Phân quyền theo vai trò (Admin, PDT, TBM, GV, SV, Doanh nghiệp). Đã có tính năng gán vai trò trực tiếp trong màn hình Sửa người dùng (/users/edit). Ma trận phân quyền chi tiết động theo từng hành động đang được xây dựng.',
                                     'Đã có: Gán vai trò cho người dùng tại màn hình Quản lý người dùng (/users/edit).',
                                     $baseUrl . '/users',
@@ -248,6 +250,14 @@ if (!function_exists('renderDemoItem')) {
                                         <span class="nav-link-title">Tạo đợt mới</span>
                                     </a>
                                 </li>
+                                <li class="nav-item">
+                                    <a class="nav-link<?= $isMilestones ? ' active' : '' ?>"
+                                       href="<?= $escape($baseUrl) ?>/milestones"
+                                       <?= $isMilestones ? 'aria-current="page"' : '' ?>>
+                                        <span class="nav-link-icon"><i class="ti ti-timeline fs-2"></i></span>
+                                        <span class="nav-link-title">Mốc tiến độ</span>
+                                    </a>
+                                </li>
                             </ul>
                         </div>
                     </li>
@@ -301,12 +311,12 @@ if (!function_exists('renderDemoItem')) {
                     <li class="nav-item sidebar-nav-group">
                         <button class="nav-link sidebar-group-toggle" type="button"
                                 data-bs-toggle="collapse" data-bs-target="#sidebar-assignments-menu-adm"
-                                aria-controls="sidebar-assignments-menu-adm" aria-expanded="<?= $isAssignments ? 'true' : 'false' ?>">
+                                aria-controls="sidebar-assignments-menu-adm" aria-expanded="<?= $isAssignmentsGroup ? 'true' : 'false' ?>">
                             <span class="nav-link-icon"><i class="ti ti-user-share fs-2"></i></span>
                             <span class="nav-link-title sidebar-group-title">Phân công đề tài</span>
                             <i class="ti ti-chevron-down sidebar-group-chevron ms-auto" aria-hidden="true"></i>
                         </button>
-                        <div class="collapse<?= $isAssignments ? ' show' : '' ?>" id="sidebar-assignments-menu-adm">
+                        <div class="collapse<?= $isAssignmentsGroup ? ' show' : '' ?>" id="sidebar-assignments-menu-adm">
                             <ul class="navbar-nav sidebar-submenu">
                                 <li class="nav-item">
                                     <a class="nav-link<?= $isAssignments ? ' active' : '' ?>"
@@ -364,10 +374,17 @@ if (!function_exists('renderDemoItem')) {
                             <span class="nav-link-title">Kết quả phân công</span>
                         </a>
                     </li>
-                    <?= renderDemoItem('Tiến độ của tôi', 'ti-timeline', 'chua_trien_khai', 'Sprint 5', 'Xem tiến độ thực hiện đồ án và các mốc công việc (milestones) cần hoàn thành.') ?>
-                    <?= renderDemoItem('Nhật ký thực tập', 'ti-notebook', 'chua_trien_khai', 'Sprint 5', 'Viết và cập nhật nhật ký thực tập/đồ án hằng tuần.') ?>
-                    <?= renderDemoItem('Nộp báo cáo', 'ti-upload', 'chua_trien_khai', 'Sprint 5', 'Nộp bài báo cáo định kỳ theo các đợt nộp.') ?>
-                    <?= renderDemoItem('Kết quả đánh giá', 'ti-award', 'chua_trien_khai', 'Sprint 6', 'Xem kết quả điểm quá trình, điểm phản biện và hội đồng bảo vệ.') ?>
+                    <li class="nav-item">
+                        <a class="nav-link<?= ($isMilestones && !$isAdmin) ? ' active' : '' ?>"
+                           href="<?= $escape($baseUrl) ?>/milestones"
+                           <?= ($isMilestones && !$isAdmin) ? 'aria-current="page"' : '' ?>>
+                            <span class="nav-link-icon"><i class="ti ti-timeline fs-2"></i></span>
+                            <span class="nav-link-title">Tiến độ của tôi</span>
+                        </a>
+                    </li>
+                    <?= renderDemoItem('Nhật ký thực tập', 'ti-notebook', 'chua_trien_khai', '', 'Viết và cập nhật nhật ký thực tập/đồ án hằng tuần.') ?>
+                    <?= renderDemoItem('Nộp báo cáo', 'ti-upload', 'chua_trien_khai', '', 'Nộp bài báo cáo định kỳ theo các đợt nộp.') ?>
+                    <?= renderDemoItem('Kết quả đánh giá', 'ti-award', 'chua_trien_khai', '', 'Xem kết quả điểm quá trình, điểm phản biện và hội đồng bảo vệ.') ?>
                     <?php endif; ?>
 
                     <?php elseif ($isTrainingDept): ?>
@@ -422,18 +439,26 @@ if (!function_exists('renderDemoItem')) {
                                         <span class="nav-link-title">Tạo đợt mới</span>
                                     </a>
                                 </li>
+                                <li class="nav-item">
+                                    <a class="nav-link<?= $isMilestones ? ' active' : '' ?>"
+                                       href="<?= $escape($baseUrl) ?>/milestones"
+                                       <?= $isMilestones ? 'aria-current="page"' : '' ?>>
+                                        <span class="nav-link-icon"><i class="ti ti-timeline fs-2"></i></span>
+                                        <span class="nav-link-title">Mốc tiến độ</span>
+                                    </a>
+                                </li>
                                 <?= renderDemoItem(
                                     'Điều kiện tham gia',
                                     'ti-checkup-list',
                                     'chua_trien_khai',
-                                    'Sprint 2',
+                                    '',
                                     'Cấu hình tiêu chí điều kiện tham gia (số tín chỉ tích lũy tối thiểu, điều kiện tiên quyết môn học) cho từng đợt thực tập hoặc đồ án.'
                                 ) ?>
                                 <?= renderDemoItem(
                                     'Danh sách sinh viên đủ điều kiện',
                                     'ti-user-check',
                                     'chua_trien_khai',
-                                    'Sprint 2',
+                                    '',
                                     'Quản lý và xét duyệt danh sách sinh viên đủ tiêu chuẩn tham gia nộp nguyện vọng trong đợt.'
                                 ) ?>
                             </ul>
@@ -489,12 +514,12 @@ if (!function_exists('renderDemoItem')) {
                     <li class="nav-item sidebar-nav-group">
                         <button class="nav-link sidebar-group-toggle" type="button"
                                 data-bs-toggle="collapse" data-bs-target="#sidebar-assignments-menu-pdt"
-                                aria-controls="sidebar-assignments-menu-pdt" aria-expanded="<?= $isAssignments ? 'true' : 'false' ?>">
+                                aria-controls="sidebar-assignments-menu-pdt" aria-expanded="<?= $isAssignmentsGroup ? 'true' : 'false' ?>">
                             <span class="nav-link-icon"><i class="ti ti-user-share fs-2"></i></span>
                             <span class="nav-link-title sidebar-group-title">Phân công &amp; công bố kết quả</span>
                             <i class="ti ti-chevron-down sidebar-group-chevron ms-auto" aria-hidden="true"></i>
                         </button>
-                        <div class="collapse<?= $isAssignments ? ' show' : '' ?>" id="sidebar-assignments-menu-pdt">
+                        <div class="collapse<?= $isAssignmentsGroup ? ' show' : '' ?>" id="sidebar-assignments-menu-pdt">
                             <ul class="navbar-nav sidebar-submenu">
                                 <li class="nav-item">
                                     <a class="nav-link<?= $isAssignments ? ' active' : '' ?>"
@@ -522,21 +547,21 @@ if (!function_exists('renderDemoItem')) {
                         'Thông báo',
                         'ti-bell',
                         'chua_trien_khai',
-                        'Sprint 5/6',
+                        '',
                         'Gửi thông báo toàn trường theo đợt, nhắc hạn nộp báo cáo, lịch họp hội đồng và gửi email thông báo tự động.'
                     ) ?>
                     <?= renderDemoItem(
                         'Lịch bảo vệ',
                         'ti-calendar-time',
                         'chua_trien_khai',
-                        'Sprint 6',
+                        '',
                         'Bố trí lịch bảo vệ đồ án tốt nghiệp, phân phòng thi và phân bổ danh sách sinh viên bảo vệ theo hội đồng.'
                     ) ?>
                     <?= renderDemoItem(
                         'Thống kê và báo cáo',
                         'ti-chart-bar',
                         'chua_trien_khai',
-                        'Sprint 6',
+                        '',
                         'Báo cáo thống kê toàn diện: số đề tài đăng ký, tỷ lệ sinh viên được ghép đúng nguyện vọng 1/2/3, phân bố điểm đánh giá và xuất báo cáo PDF/Excel.'
                     ) ?>
 
@@ -614,12 +639,12 @@ if (!function_exists('renderDemoItem')) {
                     <li class="nav-item sidebar-nav-group">
                         <button class="nav-link sidebar-group-toggle" type="button"
                                 data-bs-toggle="collapse" data-bs-target="#sidebar-assignments-menu-depthead"
-                                aria-controls="sidebar-assignments-menu-depthead" aria-expanded="<?= $isAssignments ? 'true' : 'false' ?>">
+                                aria-controls="sidebar-assignments-menu-depthead" aria-expanded="<?= $isAssignmentsGroup ? 'true' : 'false' ?>">
                             <span class="nav-link-icon"><i class="ti ti-user-share fs-2"></i></span>
                             <span class="nav-link-title sidebar-group-title">Phân công của bộ môn</span>
                             <i class="ti ti-chevron-down sidebar-group-chevron ms-auto" aria-hidden="true"></i>
                         </button>
-                        <div class="collapse<?= $isAssignments ? ' show' : '' ?>" id="sidebar-assignments-menu-depthead">
+                        <div class="collapse<?= $isAssignmentsGroup ? ' show' : '' ?>" id="sidebar-assignments-menu-depthead">
                             <ul class="navbar-nav sidebar-submenu">
                                 <li class="nav-item">
                                     <a class="nav-link<?= $isAssignments ? ' active' : '' ?>"
@@ -646,16 +671,17 @@ if (!function_exists('renderDemoItem')) {
                         'Xét duyệt nơi thực tập',
                         'ti-building-check',
                         'chua_trien_khai',
-                        'Sprint 5',
+                        '',
                         'Xét duyệt đơn vị thực tập doanh nghiệp do sinh viên tự tìm kiếm và đề xuất.'
                     ) ?>
-                    <?= renderDemoItem(
-                        'Tiến độ của bộ môn',
-                        'ti-chart-line',
-                        'chua_trien_khai',
-                        'Sprint 5',
-                        'Theo dõi tiến độ thực hiện đề tài và nộp báo cáo định kỳ của toàn bộ sinh viên thuộc bộ môn quản lý.'
-                    ) ?>
+                    <li class="nav-item">
+                        <a class="nav-link<?= $isMilestones ? ' active' : '' ?>"
+                           href="<?= $escape($baseUrl) ?>/milestones"
+                           <?= $isMilestones ? 'aria-current="page"' : '' ?>>
+                            <span class="nav-link-icon"><i class="ti ti-timeline fs-2"></i></span>
+                            <span class="nav-link-title">Mốc tiến độ</span>
+                        </a>
+                    </li>
 
                     <?php elseif ($isLecturer): ?>
                     <!-- ======================================== -->
@@ -737,32 +763,33 @@ if (!function_exists('renderDemoItem')) {
                             <span class="nav-link-title">Sinh viên được phân công</span>
                         </a>
                     </li>
-                    <?= renderDemoItem(
-                        'Mốc tiến độ',
-                        'ti-milestone',
-                        'chua_trien_khai',
-                        'Sprint 5',
-                        'Thiết lập kế hoạch làm việc, mốc công việc (milestones) định kỳ cho từng sinh viên/nhóm thực hiện đồ án.'
-                    ) ?>
+                    <li class="nav-item">
+                        <a class="nav-link<?= $isMilestones ? ' active' : '' ?>"
+                           href="<?= $escape($baseUrl) ?>/milestones"
+                           <?= $isMilestones ? 'aria-current="page"' : '' ?>>
+                            <span class="nav-link-icon"><i class="ti ti-timeline fs-2"></i></span>
+                            <span class="nav-link-title">Tiến độ sinh viên</span>
+                        </a>
+                    </li>
                     <?= renderDemoItem(
                         'Nhật ký và báo cáo',
                         'ti-notebook',
                         'chua_trien_khai',
-                        'Sprint 5',
+                        '',
                         'Xem và xác nhận nhật ký gặp mặt/hướng dẫn, đọc bài nộp báo cáo tiến độ và góp ý trực tuyến cho sinh viên.'
                     ) ?>
                     <?= renderDemoItem(
                         'Chấm hướng dẫn',
                         'ti-certificate',
                         'chua_trien_khai',
-                        'Sprint 6',
+                        '',
                         'Phiếu đánh giá, nhận xét và chấm điểm quá trình thực hiện đồ án của sinh viên theo rubric.'
                     ) ?>
                     <?= renderDemoItem(
                         'Chấm phản biện',
                         'ti-award',
                         'chua_trien_khai',
-                        'Sprint 6',
+                        '',
                         'Phiếu nhận xét và chấm điểm phản biện độc lập cho các đề tài đồ án được phân công.'
                     ) ?>
 
@@ -823,7 +850,7 @@ if (!function_exists('renderDemoItem')) {
                         'Đăng ký hoặc khai báo nơi thực tập',
                         'ti-building',
                         'chua_trien_khai',
-                        'Sprint 5',
+                        '',
                         'Khai báo thông tin đơn vị doanh nghiệp tiếp nhận thực tập do sinh viên tự liên hệ để bộ môn xét duyệt.'
                     ) ?>
                     <li class="nav-item">
@@ -836,32 +863,33 @@ if (!function_exists('renderDemoItem')) {
                     </li>
 
                     <!-- 7. Tiến độ, Nhật ký, Báo cáo, Đánh giá -->
-                    <?= renderDemoItem(
-                        'Tiến độ của tôi',
-                        'ti-timeline',
-                        'chua_trien_khai',
-                        'Sprint 5',
-                        'Xem kế hoạch thực hiện đồ án/thực tập, các mốc thời gian (milestones) cần hoàn thành.'
-                    ) ?>
+                    <li class="nav-item">
+                        <a class="nav-link<?= $isMilestones ? ' active' : '' ?>"
+                           href="<?= $escape($baseUrl) ?>/milestones"
+                           <?= $isMilestones ? 'aria-current="page"' : '' ?>>
+                            <span class="nav-link-icon"><i class="ti ti-timeline fs-2"></i></span>
+                            <span class="nav-link-title">Tiến độ của tôi</span>
+                        </a>
+                    </li>
                     <?= renderDemoItem(
                         'Nhật ký thực tập',
                         'ti-notebook',
                         'chua_trien_khai',
-                        'Sprint 5',
+                        '',
                         'Viết nhật ký công việc hằng tuần, ghi nhận các khó khăn và nhận phản hồi xác nhận từ người hướng dẫn.'
                     ) ?>
                     <?= renderDemoItem(
                         'Nộp báo cáo',
                         'ti-upload',
                         'chua_trien_khai',
-                        'Sprint 5',
+                        '',
                         'Upload file báo cáo đề cương, báo cáo giữa kỳ và báo cáo tổng kết theo các đợt nộp.'
                     ) ?>
                     <?= renderDemoItem(
                         'Kết quả đánh giá',
                         'ti-award',
                         'chua_trien_khai',
-                        'Sprint 6',
+                        '',
                         'Xem điểm số quá trình, điểm phản biện, điểm hội đồng và nhận xét đánh giá chi tiết theo rubric.'
                     ) ?>
 
@@ -924,14 +952,14 @@ if (!function_exists('renderDemoItem')) {
                         'Vị trí thực tập',
                         'ti-briefcase',
                         'chua_trien_khai',
-                        'Sprint 5',
+                        '',
                         'Đăng thông tin tuyển dụng, chỉ tiêu tiếp nhận và yêu cầu kỹ năng cho các vị trí thực tập tại doanh nghiệp.'
                     ) ?>
                     <?= renderDemoItem(
                         'Hồ sơ ứng tuyển',
                         'ti-id',
                         'chua_trien_khai',
-                        'Sprint 5',
+                        '',
                         'Duyệt danh sách hồ sơ sinh viên ứng tuyển vào vị trí thực tập tại doanh nghiệp.'
                     ) ?>
 
@@ -943,25 +971,33 @@ if (!function_exists('renderDemoItem')) {
                             <span class="nav-link-title">Sinh viên thực tập được giao</span>
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link<?= $isMilestones ? ' active' : '' ?>"
+                           href="<?= $escape($baseUrl) ?>/milestones"
+                           <?= $isMilestones ? 'aria-current="page"' : '' ?>>
+                            <span class="nav-link-icon"><i class="ti ti-timeline fs-2"></i></span>
+                            <span class="nav-link-title">Tiến độ thực tập</span>
+                        </a>
+                    </li>
                     <?= renderDemoItem(
                         'Xác nhận nhật ký',
                         'ti-check',
                         'chua_trien_khai',
-                        'Sprint 5',
+                        '',
                         'Xác nhận chuyên cần và ký nhận xét nhật ký làm việc hằng tuần của sinh viên tại đơn vị.'
                     ) ?>
                     <?= renderDemoItem(
                         'Nhận xét báo cáo',
                         'ti-message-dots',
                         'chua_trien_khai',
-                        'Sprint 5',
+                        '',
                         'Nhận xét tiến độ và góp ý trực tuyến cho các bản báo cáo thực tập của sinh viên.'
                     ) ?>
                     <?= renderDemoItem(
                         'Đánh giá thực tập',
                         'ti-stars',
                         'chua_trien_khai',
-                        'Sprint 6',
+                        '',
                         'Phiếu đánh giá trực tuyến của người hướng dẫn tại doanh nghiệp (thái độ, kỷ luật, năng lực chuyên môn).'
                     ) ?>
 

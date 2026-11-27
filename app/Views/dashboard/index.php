@@ -1,7 +1,7 @@
 <?php
 $pageTitle       = 'Bảng điều khiển tổng quan - Hệ thống quản lý thực tập và đồ án sinh viên';
 $pageHeading     = 'Bảng điều khiển tổng quan';
-$pageDescription = 'HỆ THỐNG QUẢN LÝ THỰC TẬP VÀ ĐỒ ÁN SINH VIÊN';
+$pageDescription = 'Tổng quan thông tin và tiến độ thực tập - đồ án';
 $activePage      = 'dashboard';
 require dirname(__DIR__) . '/layouts/header.php';
 
@@ -46,12 +46,14 @@ $portalTitle = $primaryRole !== null ? ($portalLabels[$primaryRole] ?? 'Cổng t
                         Xin chào, <?= $escape($currentFullName) ?>!
                     </h2>
                     <div class="text-secondary small">
-                        Vai trò chính: 
-                        <span class="badge bg-primary text-white fw-medium ms-1">
-                            <?= $escape($displayRole) ?>
-                        </span>
+                        <?php if (mb_strtolower(trim((string)$currentFullName)) !== mb_strtolower(trim((string)$displayRole))): ?>
+                            Vai trò chính: 
+                            <span class="badge bg-primary text-white fw-medium ms-1 me-1">
+                                <?= $escape($displayRole) ?>
+                            </span>
+                        <?php endif; ?>
                         <?php if (count($userRoles) > 1): ?>
-                            <span class="text-muted ms-2">(Kiêm nhiệm: <?= $escape(implode(', ', array_map(fn($r) => $roleLabels[$r] ?? $r, array_diff($userRoles, [$primaryRole])))) ?>)</span>
+                            <span class="text-muted ms-1">(Kiêm nhiệm: <?= $escape(implode(', ', array_map(fn($r) => $roleLabels[$r] ?? $r, array_diff($userRoles, [$primaryRole])))) ?>)</span>
                         <?php endif; ?>
                         &bull; Trạng thái: <span class="badge bg-success-lt text-success fw-medium">Đang hoạt động</span>
                     </div>

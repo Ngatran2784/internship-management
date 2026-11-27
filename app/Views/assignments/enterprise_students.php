@@ -3,6 +3,7 @@ $pageTitle = 'Sinh viên thực tập tiếp nhận';
 $pageHeading = 'Sinh viên thực tập tiếp nhận';
 $pageDescription = 'DANH SÁCH SINH VIÊN ĐƯỢC PHÂN CÔNG THỰC TẬP TẠI DOANH NGHIỆP';
 $activePage = 'enterprise-students';
+$hidePageHeader = true;
 require dirname(__DIR__) . '/layouts/header.php';
 
 $escape = static fn(mixed $value): string => htmlspecialchars(
@@ -57,7 +58,7 @@ $statusBadges = [
                         <?php foreach ($periods as $period): ?>
                             <?php $periodId = (int)($period['id'] ?? 0); ?>
                             <option value="<?= $periodId ?>" <?= $selectedPeriod === $periodId ? 'selected' : '' ?>>
-                                <?= $escape($period['code'] ?? '') ?> — <?= $escape($period['name'] ?? '') ?>
+                                [<?= $escape($period['code'] ?? '') ?>] <?= $escape($period['name'] ?? '') ?>
                             </option>
                         <?php endforeach; ?>
                     </select>

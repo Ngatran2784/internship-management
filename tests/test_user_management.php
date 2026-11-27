@@ -95,7 +95,7 @@ try {
 
     // --- existsUsername / existsEmail ---
     $id = User::createWithRoles(
-        ['username' => $uName, 'email' => $uMail, 'password' => $pw, 'full_name' => 'Người Test Sprint 2'],
+        ['username' => $uName, 'email' => $uMail, 'password' => $pw, 'full_name' => 'Người dùng kiểm thử'],
         [$studentRoleId]
     );
     t('createWithRoles trả về id > 0', $id > 0);

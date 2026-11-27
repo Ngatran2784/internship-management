@@ -118,8 +118,8 @@ try {
 
     // Chuẩn bị dữ liệu mẫu phục vụ kiểm thử (1 đợt, 2 user)
     $testPeriodId = InternshipPeriod::create([
-        'code'        => 'TEST-PERIOD-SP3',
-        'name'        => 'Đợt kiểm thử Sprint 3',
+        'code'        => 'TEST-PERIOD-TOPIC',
+        'name'        => 'Đợt kiểm thử đề tài',
         'type'        => InternshipPeriod::TYPE_INTERNSHIP,
         'start_date'  => '2026-11-01',
         'end_date'    => '2026-11-30',
@@ -152,7 +152,7 @@ try {
     $foundTopic1 = Topic::findById($topicId1);
     t('findById tìm thấy đúng đề tài vừa tạo', $foundTopic1 !== null && (int)$foundTopic1['id'] === $topicId1);
     t('Mã đề tài được chuẩn hóa tự động sang chữ in hoa (TEST-DT-001)', $foundTopic1['code'] === 'TEST-DT-001');
-    t('Thông tin đợt được JOIN chính xác (period_code, period_name)', !empty($foundTopic1['period_code']) && $foundTopic1['period_code'] === 'TEST-PERIOD-SP3');
+    t('Thông tin đợt được JOIN chính xác (period_code, period_name)', !empty($foundTopic1['period_code']) && $foundTopic1['period_code'] === 'TEST-PERIOD-TOPIC');
     t('Thông tin người đề xuất được JOIN chính xác (proposer_name)', !empty($foundTopic1['proposer_name']) && $foundTopic1['proposer_name'] === 'TS. Lê Thu Hương');
 
     // Kiểm tra tìm kiếm theo Code

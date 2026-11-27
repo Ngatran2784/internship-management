@@ -1,7 +1,7 @@
 <?php
 $pageTitle = 'Lịch sử xét duyệt';
 $pageHeading = 'Lịch sử xét duyệt đề tài';
-$pageDescription = 'HỆ THỐNG QUẢN LÝ THỰC TẬP VÀ ĐỒ ÁN SINH VIÊN';
+$pageDescription = 'Lịch sử xét duyệt và ghi chú phản hồi cho đề tài';
 $activePage = 'topics';
 require dirname(__DIR__) . '/layouts/header.php';
 

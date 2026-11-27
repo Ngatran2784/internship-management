@@ -1,7 +1,7 @@
 <?php
 $pageTitle = 'Chỉnh sửa đề tài';
 $pageHeading = 'Chỉnh sửa đề tài';
-$pageDescription = 'HỆ THỐNG QUẢN LÝ THỰC TẬP VÀ ĐỒ ÁN SINH VIÊN';
+$pageDescription = 'Cập nhật thông tin và chỉnh sửa đề tài';
 $activePage = 'topics';
 require dirname(__DIR__) . '/layouts/header.php';
 

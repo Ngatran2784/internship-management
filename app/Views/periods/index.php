@@ -1,7 +1,7 @@
 <?php
 $pageTitle       = 'Quản lý đợt thực tập & đồ án';
 $pageHeading     = 'Quản lý đợt thực tập & đồ án';
-$pageDescription = 'HỆ THỐNG QUẢN LÝ THỰC TẬP VÀ ĐỒ ÁN SINH VIÊN';
+$pageDescription = 'Danh sách các đợt thực tập tốt nghiệp và đồ án tốt nghiệp';
 $activePage      = 'periods';
 require dirname(__DIR__) . '/layouts/header.php';
 

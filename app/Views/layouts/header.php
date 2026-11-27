@@ -3,7 +3,7 @@ $scriptDirectory = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/'
 $baseUrl = $scriptDirectory === '/' || $scriptDirectory === '.' ? '' : rtrim($scriptDirectory, '/');
 $pageTitle = $pageTitle ?? 'Hệ thống Quản lý Thực tập & Đồ án';
 $pageHeading = $pageHeading ?? 'Bảng điều khiển tổng quan';
-$pageDescription = $pageDescription ?? 'HỆ THỐNG QUẢN LÝ THỰC TẬP VÀ ĐỒ ÁN SINH VIÊN';
+$pageDescription = $pageDescription ?? '';
 $activePage = $activePage ?? '';
 $escape = static fn (mixed $value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 
@@ -173,13 +173,17 @@ $canManagePeriods = $isAdmin || in_array('training_dept', $currentRoles, true);
                         <?php endif; ?>
                             <span class="d-none d-sm-block ps-2 text-start">
                                 <span class="fw-medium d-block"><?= $escape($currentFullName) ?></span>
-                                <span class="small text-secondary"><?= $escape($displayRole) ?></span>
+                                <?php if (mb_strtolower(trim((string)$currentFullName)) !== mb_strtolower(trim((string)$displayRole))): ?>
+                                    <span class="small text-secondary"><?= $escape($displayRole) ?></span>
+                                <?php endif; ?>
                             </span>
                         </a>
                         <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
                             <div class="dropdown-header">
                                 <span class="d-block fw-bold text-dark"><?= $escape($currentFullName) ?></span>
-                                <span class="small text-secondary"><?= $escape($displayRole) ?></span>
+                                <?php if (mb_strtolower(trim((string)$currentFullName)) !== mb_strtolower(trim((string)$displayRole))): ?>
+                                    <span class="small text-secondary"><?= $escape($displayRole) ?></span>
+                                <?php endif; ?>
                             </div>
                             <a href="<?= $escape($baseUrl) ?>/dashboard" class="dropdown-item">
                                 <i class="ti ti-dashboard me-2"></i>Bảng điều khiển tổng quan
@@ -216,22 +220,27 @@ $canManagePeriods = $isAdmin || in_array('training_dept', $currentRoles, true);
             </div>
         </header>
 
+        <?php if (empty($hidePageHeader)): ?>
         <div class="page-header d-print-none py-2">
             <div class="container-xl">
                 <div class="row g-2 align-items-center">
                     <div class="col">
-                        <div class="page-pretitle text-secondary"><?= $escape($pageDescription) ?></div>
+                        <?php if (!empty($pagePretitle) && $pagePretitle !== 'HỆ THỐNG QUẢN LÝ THỰC TẬP VÀ ĐỒ ÁN SINH VIÊN'): ?>
+                            <div class="page-pretitle text-secondary"><?= $escape($pagePretitle) ?></div>
+                        <?php endif; ?>
                         <h1 class="page-title"><?= $escape($pageHeading) ?></h1>
+                        <?php if (!empty($pageDescription) && $pageDescription !== 'HỆ THỐNG QUẢN LÝ THỰC TẬP VÀ ĐỒ ÁN SINH VIÊN' && mb_strtolower(trim((string)$pageDescription)) !== mb_strtolower(trim((string)$pageHeading))): ?>
+                            <div class="text-secondary mt-1"><?= $escape($pageDescription) ?></div>
+                        <?php endif; ?>
                     </div>
-                    <?php if ($activePage === 'dashboard' && !empty($canManagePeriods)): ?>
+                    <?php if (!empty($pageActions)): ?>
                         <div class="col-12 col-sm-auto ms-sm-auto text-sm-end d-print-none">
-                            <a href="<?= $escape($baseUrl) ?>/periods/create" class="btn btn-primary">
-                                <i class="ti ti-plus me-1"></i>Tạo đợt thực tập / đồ án mới
-                            </a>
+                            <?= $pageActions ?>
                         </div>
                     <?php endif; ?>
                 </div>
             </div>
         </div>
+        <?php endif; ?>
 
         <main class="page-body mt-2">

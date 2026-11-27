@@ -488,7 +488,7 @@ class TopicAssignment
     /**
      * Lấy danh sách đề tài đã duyệt trong một đợt kèm thông tin giảng viên hướng dẫn và số chỗ còn lại
      *
-     * Chuẩn hóa dữ liệu theo Data Contract Sprint 4:
+     * Chuẩn hóa dữ liệu theo Data Contract:
      * - Bảng topics dùng `proposer_id` (người đề xuất đề tài).
      * - Bảng topic_assignments dùng `lecturer_id` (giảng viên hướng dẫn chính thức).
      * - Trả về các trường chuẩn: `topic_id`, `topic_name`, `topic_code`, `max_students`, `remaining_slots`, `lecturer_id`, `lecturer_name`.

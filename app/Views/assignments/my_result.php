@@ -3,6 +3,7 @@ $pageTitle = 'Kết quả phân công đề tài';
 $pageHeading = 'Kết quả phân công đề tài & Giảng viên';
 $pageDescription = 'KẾT QUẢ PHÂN CÔNG CHÍNH THỨC CỦA SINH VIÊN';
 $activePage = 'assignment-result';
+$hidePageHeader = true;
 require dirname(__DIR__) . '/layouts/header.php';
 
 $escape = static fn(mixed $value): string => htmlspecialchars(

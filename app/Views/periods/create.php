@@ -1,7 +1,7 @@
 <?php
 $pageTitle       = 'Tạo đợt thực tập mới';
 $pageHeading     = 'Tạo đợt thực tập mới';
-$pageDescription = 'HỆ THỐNG QUẢN LÝ THỰC TẬP VÀ ĐỒ ÁN SINH VIÊN';
+$pageDescription = 'Thiết lập thông tin và thời gian cho đợt mới';
 $activePage      = 'periods';
 require dirname(__DIR__) . '/layouts/header.php';
 

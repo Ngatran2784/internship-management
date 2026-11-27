@@ -1,7 +1,7 @@
 <?php
 $pageTitle       = 'Chỉnh sửa tài khoản';
 $pageHeading     = 'Chỉnh sửa tài khoản';
-$pageDescription = 'HỆ THỐNG QUẢN LÝ THỰC TẬP VÀ ĐỒ ÁN SINH VIÊN';
+$pageDescription = 'Cập nhật thông tin tài khoản và điều chỉnh phân quyền';
 $activePage      = 'users';
 require dirname(__DIR__) . '/layouts/header.php';
 

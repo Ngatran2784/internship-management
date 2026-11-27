@@ -16,3 +16,15 @@ desktop.ini
 *.log
 tmp/
 temp/
+scratch/
+
+# Database backups & sensitive dumps
+database/backup*/
+database/*.sql
+!database/schema.sql
+!database/migrations/*.sql
+!database/seeds/*.sql
+
+# Uploaded files
+public/uploads/reports/
+tests/test_uploads/

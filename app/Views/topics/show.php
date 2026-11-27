@@ -1,7 +1,7 @@
 <?php
 $pageTitle = 'Chi tiết đề tài';
 $pageHeading = 'Chi tiết đề tài';
-$pageDescription = 'HỆ THỐNG QUẢN LÝ THỰC TẬP VÀ ĐỒ ÁN SINH VIÊN';
+$pageDescription = 'Thông tin chi tiết đề tài, người đề xuất và đợt áp dụng';
 $activePage = 'topics';
 require dirname(__DIR__) . '/layouts/header.php';
 

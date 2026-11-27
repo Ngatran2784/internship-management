@@ -1,6 +1,6 @@
 <?php
 /**
- * KIỂM THỬ BACKEND QUẢN LÝ ĐỢT THỰC TẬP VÀ ĐỒ ÁN - SPRINT 2
+ * KIỂM THỬ BACKEND QUẢN LÝ ĐỢT THỰC TẬP VÀ ĐỒ ÁN
  * Chạy: C:\xampp\php\php.exe tests/test_internship_periods.php
  *
  * Toàn bộ thao tác tạo/sửa/đổi trạng thái CSDL nằm trong PDO Transaction

@@ -1,7 +1,7 @@
 <?php
 $pageTitle = 'Đăng ký nguyện vọng đề tài';
 $pageHeading = 'Đăng ký nguyện vọng đề tài';
-$pageDescription = 'HỆ THỐNG QUẢN LÝ THỰC TẬP VÀ ĐỒ ÁN SINH VIÊN';
+$pageDescription = 'Lựa chọn và sắp xếp thứ tự ưu tiên các nguyện vọng đề tài';
 $activePage = 'wishes';
 require dirname(__DIR__) . '/layouts/header.php';
 

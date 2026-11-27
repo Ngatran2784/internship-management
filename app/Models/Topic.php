@@ -565,7 +565,7 @@ class Topic
 
     /**
      * Lấy danh sách đề tài đã duyệt trong đợt kèm số chỗ còn lại và thông tin giảng viên
-     * (Chuẩn hóa cho phân hệ phân công Sprint 4 - Tái sử dụng logic từ TopicAssignment)
+     * (Chuẩn hóa cho phân hệ phân công đề tài - Tái sử dụng logic từ TopicAssignment)
      *
      * @param int $periodId ID đợt
      * @return array Danh sách đề tài đã chuẩn hóa

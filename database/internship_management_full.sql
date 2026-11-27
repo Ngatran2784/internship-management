@@ -1,20 +1,20 @@
 -- ==============================================================================
 -- DỰ ÁN: WEBSITE QUẢN LÝ VÀ THEO DÕI TIẾN ĐỘ THỰC TẬP & ĐỒ ÁN SINH VIÊN
--- TỆP CƠ SỞ DỮ LIỆU TỔNG HỢP TOÀN DIỆN (FULL DATABASE INITIALIZATION - SPRINT 3)
+-- TỆP CƠ SỞ DỮ LIỆU TỔNG HỢP TOÀN DIỆN (FULL DATABASE INITIALIZATION)
 -- Đường dẫn: database/internship_management_full.sql
 -- Động cơ lưu trữ: InnoDB | Bộ mã ký tự: utf8mb4 | Đối chiếu: utf8mb4_unicode_ci
 -- ==============================================================================
 -- MỤC ĐÍCH SỬ DỤNG:
 -- 1. Phục vụ khởi tạo toàn diện cấu trúc (DDL) và dữ liệu mẫu (Seed) cho môi trường mới.
 -- 2. Thành viên nhóm sau khi clone dự án chỉ cần import tệp duy nhất này vào MySQL / phpMyAdmin.
--- 3. Bao gồm đầy đủ 7 bảng:
+-- 3. Bao gồm đầy đủ các bảng:
 --    - roles: Danh mục 6 vai trò người dùng trong hệ thống
 --    - users: Tài khoản người dùng và hồ sơ
 --    - user_roles: Phân quyền vai trò người dùng (N - N)
 --    - internship_periods: Đợt thực tập / đồ án tốt nghiệp
---    - topics: Danh mục đề tài thực tập và đồ án (Sprint 3)
---    - topic_approvals: Lịch sử xét duyệt / từ chối đề tài (Sprint 3)
---    - topic_wishes: Đăng ký nguyện vọng đề tài của sinh viên (Sprint 3)
+--    - topics: Danh mục đề tài thực tập và đồ án
+--    - topic_approvals: Lịch sử xét duyệt / từ chối đề tài
+--    - topic_wishes: Đăng ký nguyện vọng đề tài của sinh viên
 -- ==============================================================================
 -- NGUYÊN TẮC AN TOÀN VÀ IDEMPOTENT:
 -- 1. Tuyệt đối KHÔNG chứa DROP DATABASE, DROP TABLE hay TRUNCATE.

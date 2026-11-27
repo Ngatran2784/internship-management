@@ -1,6 +1,6 @@
 <?php
 /**
- * KIỂM THỬ ĐĂNG KÝ VÀ SẮP XẾP NGUYỆN VỌNG ĐỀ TÀI (SPRINT 3: S3-04, S3-06, S3-07)
+ * KIỂM THỬ ĐĂNG KÝ VÀ SẮP XẾP NGUYỆN VỌNG ĐỀ TÀI
  * Chạy: php tests/test_topic_wishes.php
  *
  * Yêu cầu: MySQL đang chạy, đã có các bảng internship_periods, topics, topic_wishes.

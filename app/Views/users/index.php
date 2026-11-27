@@ -1,7 +1,7 @@
 <?php
 $pageTitle       = 'Quản lý người dùng';
 $pageHeading     = 'Quản lý người dùng';
-$pageDescription = 'HỆ THỐNG QUẢN LÝ THỰC TẬP VÀ ĐỒ ÁN SINH VIÊN';
+$pageDescription = 'Danh sách tài khoản, vai trò và trạng thái người dùng trong hệ thống';
 $activePage      = 'users';
 require dirname(__DIR__) . '/layouts/header.php';
 

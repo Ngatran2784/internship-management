@@ -9,7 +9,7 @@ use PDO;
 use RuntimeException;
 
 /**
- * TopicWish Model - Quản lý nguyện vọng đăng ký đề tài của sinh viên (Sprint 3)
+ * TopicWish Model - Quản lý nguyện vọng đăng ký đề tài của sinh viên
  *
  * Nghiệp vụ theo Product Backlog:
  * - Sinh viên đăng ký tối đa 3 nguyện vọng (NV1, NV2, NV3) trong một đợt thực tập / đồ án đang mở.
