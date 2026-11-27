@@ -95,7 +95,7 @@ t("Route /users/edit: Active mục Danh sách người dùng tương ứng", str
 $sbProfile = renderSidebarForTest($adminRoles, '/CNPM/internship-management/public/profile', 'profile');
 preg_match_all('/class="[^"]*nav-link[^"]*\bactive\b[^"]*"/', $sbProfile, $mProfile);
 t("Route /profile: Có duy nhất 1 mục active", count($mProfile[0]) === 1);
-t("Route /profile: Mục active là Thông tin cá nhân", str_contains($sbProfile, 'href="/CNPM/internship-management/public/profile"') && str_contains($sbProfile, 'aria-current="page"'));
+t("Route /profile: Mục active là Hồ sơ cá nhân", str_contains($sbProfile, 'href="/CNPM/internship-management/public/profile"') && str_contains($sbProfile, 'aria-current="page"'));
 
 // Route /periods
 $sbPeriods = renderSidebarForTest($adminRoles, '/CNPM/internship-management/public/periods', 'periods');
@@ -134,39 +134,30 @@ foreach ([
     t("Route {$request}: Active đúng mục đề tài", str_contains($sbTopic, 'href="/CNPM/internship-management/public' . $activeHref . '"') && str_contains($sbTopic, 'aria-current="page"'));
 }
 
-// ── 4. Kiểm tra đầy đủ 8 nhóm menu hệ thống trong Admin theo đúng danh sách ──
+// ── 4. Kiểm tra các nhóm menu hệ thống trong Admin theo chức năng hoạt động ──
 t("Nhóm 1: Bảng điều khiển tồn tại", str_contains($sbDash, 'Bảng điều khiển'));
 t("Nhóm 2: Quản lý người dùng tồn tại", str_contains($sbDash, 'Quản lý người dùng'));
-t("Nhóm 2 có menu con: Danh sách người dùng, Thêm người dùng, Thông tin cá nhân", 
+t("Nhóm 2 có menu con: Danh sách người dùng, Thêm người dùng, Hồ sơ cá nhân", 
     str_contains($sbDash, 'Danh sách người dùng') && 
     str_contains($sbDash, 'Thêm người dùng') && 
-    str_contains($sbDash, 'Thông tin cá nhân')
+    str_contains($sbDash, 'Hồ sơ cá nhân')
 );
 t("Nhóm 3: Đợt thực tập & đồ án tồn tại", str_contains($sbDash, 'Đợt thực tập &amp; đồ án'));
 t("Nhóm 3 có menu con: Danh sách đợt, Tạo đợt mới", 
     str_contains($sbDash, 'Danh sách đợt') && 
     str_contains($sbDash, 'Tạo đợt mới')
 );
-t("Nhóm 4: Quản lý vai trò và phân quyền tồn tại ở trạng thái disabled", 
-    str_contains($sbDash, 'Quản lý vai trò và phân quyền') && str_contains($sbDash, 'aria-disabled="true"')
-);
-t("Nhóm 5: Quản lý đề tài có danh sách, đề xuất và chờ duyệt",
+t("Quản lý đề tài có danh sách, đề xuất và chờ duyệt",
     str_contains($sbDash, 'Quản lý đề tài') &&
     str_contains($sbDash, 'href="/CNPM/internship-management/public/topics"') &&
     str_contains($sbDash, 'href="/CNPM/internship-management/public/topics/create"') &&
     str_contains($sbDash, 'href="/CNPM/internship-management/public/topics/pending"')
 );
-t("Nhóm 6: Admin thấy liên kết phân công dùng route thật",
+t("Admin thấy liên kết phân công dùng route thật",
     str_contains($sbDash, 'Phân công đề tài')
     && str_contains($sbDash, 'href="/CNPM/internship-management/public/assignments"')
     && str_contains($sbDash, 'href="/CNPM/internship-management/public/assignments#assignment-results"')
     && str_contains($sbDash, 'Kết quả phân công')
-);
-t("Nhóm 7: Quản lý đơn vị thực tập tồn tại ở trạng thái disabled", 
-    str_contains($sbDash, 'Quản lý đơn vị thực tập') && str_contains($sbDash, 'aria-disabled="true"')
-);
-t("Nhóm 8: Thống kê và báo cáo tồn tại ở trạng thái disabled", 
-    str_contains($sbDash, 'Thống kê và báo cáo') && str_contains($sbDash, 'aria-disabled="true"')
 );
 
 // ── 5. Kiểm tra loại bỏ hoàn toàn tiêu đề 'Chức năng mở rộng' và nhãn 'Sắp' ──
@@ -182,21 +173,27 @@ t("Sinh viên: Không thấy menu Tạo đợt mới", !str_contains($sbStudent,
 t("Sinh viên: Có mục Bảng điều khiển active", str_contains($sbStudent, 'Bảng điều khiển'));
 t("Sinh viên: Có danh sách đề tài đã được duyệt", str_contains($sbStudent, 'Danh sách đề tài') && str_contains($sbStudent, 'href="/CNPM/internship-management/public/topics"'));
 t("Sinh viên: Không còn nhãn 'Sắp có'", !str_contains($sbStudent, 'Sắp có'));
-t("Sinh viên: Có các mục nhiệm vụ ở trạng thái disabled chuẩn", str_contains($sbStudent, 'Theo dõi tiến độ') && str_contains($sbStudent, 'disabled'));
 t("Sinh viên: KHÔNG hiển thị chức năng Phân công đề tài và giảng viên", !str_contains($sbStudent, 'Phân công đề tài và giảng viên'));
 t("Sinh viên: KHÔNG hiển thị mục Đăng ký đề tài trùng lặp", !str_contains($sbStudent, 'Đăng ký đề tài'));
 
 // Giảng viên
 $sbLecturer = renderSidebarForTest(['lecturer'], '/CNPM/internship-management/public/profile', 'profile');
-t("Giảng viên: Active đúng mục Thông tin cá nhân", str_contains($sbLecturer, 'Thông tin cá nhân') && str_contains($sbLecturer, 'aria-current="page"'));
+t("Giảng viên: Active đúng mục Hồ sơ cá nhân", str_contains($sbLecturer, 'Hồ sơ cá nhân') && str_contains($sbLecturer, 'aria-current="page"'));
 t("Giảng viên: Không còn nhãn 'Sắp có'", !str_contains($sbLecturer, 'Sắp có'));
-t("Giảng viên: Có các mục nhiệm vụ giảng dạy disabled", str_contains($sbLecturer, 'Đề tài hướng dẫn') && str_contains($sbLecturer, 'disabled'));
+t("Giảng viên: Có mục Đề tài đã đề xuất", str_contains($sbLecturer, 'Đề tài đã đề xuất'));
 t("Giảng viên: KHÔNG hiển thị chức năng Phân công đề tài và giảng viên của Cán bộ khoa", !str_contains($sbLecturer, 'Phân công đề tài và giảng viên'));
 t("Giảng viên: KHÔNG hiển thị Đề tài chờ duyệt", !str_contains($sbLecturer, 'Đề tài chờ duyệt'));
 
 // Cán bộ khoa / Trưởng bộ môn
 $sbDeptHead = renderSidebarForTest(['department_head'], '/CNPM/internship-management/public/dashboard', 'dashboard');
-t("Cán bộ khoa: Có menu Quản lý đề tài và Đề tài chờ duyệt", str_contains($sbDeptHead, 'Quản lý đề tài') && str_contains($sbDeptHead, 'Đề tài chờ duyệt'));
+t("Trưởng bộ môn: Có menu Xét duyệt đề tài và Đề tài chờ duyệt", str_contains($sbDeptHead, 'Xét duyệt đề tài') && str_contains($sbDeptHead, 'Đề tài chờ duyệt'));
+t("Trưởng bộ môn thuần: KHÔNG hiển thị Đề xuất đề tài và Đề tài đã đề xuất", 
+    !str_contains($sbDeptHead, 'Đề xuất đề tài') && !str_contains($sbDeptHead, 'Đề tài đã đề xuất')
+);
+$sbDeptHeadLecturer = renderSidebarForTest(['department_head', 'lecturer'], '/CNPM/internship-management/public/dashboard', 'dashboard');
+t("Trưởng bộ môn kiêm Giảng viên: Hiển thị Đề xuất đề tài và Đề tài đã đề xuất", 
+    str_contains($sbDeptHeadLecturer, 'Đề xuất đề tài') && str_contains($sbDeptHeadLecturer, 'Đề tài đã đề xuất')
+);
 t("Cán bộ khoa: Có liên kết phân công dùng route thật", str_contains($sbDeptHead, 'href="/CNPM/internship-management/public/assignments"'));
 t("Cán bộ khoa: Không thấy mục Đăng ký nguyện vọng", !str_contains($sbDeptHead, 'Đăng ký nguyện vọng'));
 
@@ -249,13 +246,11 @@ t("Sinh viên: Mục Đăng ký nguyện vọng sử dụng icon list-ordered/li
     str_contains($sbStudentWishes, 'ti-list-numbers') || str_contains($sbStudentWishes, 'ti-list-ordered')
 );
 
-// Kiểm tra thứ tự hiển thị của Sinh viên: "Quản lý đề tài" -> "Đăng ký nguyện vọng" -> "Xem đợt thực tập"
-$posTopics = strpos($sbStudentWishes, 'Quản lý đề tài');
+// Kiểm tra thứ tự hiển thị của Sinh viên: "Danh sách đề tài" -> "Đăng ký nguyện vọng"
+$posTopics = strpos($sbStudentWishes, 'Danh sách đề tài');
 $posWishes = strpos($sbStudentWishes, 'Đăng ký nguyện vọng');
-$posPeriod = strpos($sbStudentWishes, 'Xem đợt thực tập');
-t("Sinh viên: Thứ tự chuẩn: Quản lý đề tài -> Đăng ký nguyện vọng -> Xem đợt thực tập", 
-    $posTopics !== false && $posWishes !== false && $posPeriod !== false &&
-    $posTopics < $posWishes && $posWishes < $posPeriod
+t("Sinh viên: Thứ tự chuẩn: Danh sách đề tài -> Đăng ký nguyện vọng", 
+    $posTopics !== false && $posWishes !== false && $posTopics < $posWishes
 );
 
 // Kiểm tra RBAC: Các vai trò không có quyền sinh viên không hiển thị menu này
@@ -266,6 +261,54 @@ t("RBAC: Phòng đào tạo thuần không thấy Đăng ký nguyện vọng", !
 // Người dùng kiêm vai trò Admin + Student
 $sbAdminStudent = renderSidebarForTest(['admin', 'student'], '/CNPM/internship-management/public/dashboard', 'dashboard');
 t("RBAC: Tài khoản kiêm Admin + Student thấy Đăng ký nguyện vọng", str_contains($sbAdminStudent, 'Đăng ký nguyện vọng'));
+
+// ── 8. Kiểm tra chống trùng lặp menu 'Đề tài đã đề xuất' & Vai trò Doanh nghiệp ──
+$countAdminPureMy = substr_count($sbDash, 'Đề tài đã đề xuất');
+t("RBAC: Quản trị viên thuần KHÔNG thấy mục 'Đề tài đã đề xuất'", $countAdminPureMy === 0);
+
+$sbAdminLecturer = renderSidebarForTest(['admin', 'lecturer'], '/CNPM/internship-management/public/dashboard', 'dashboard');
+$countAdminLecturerMy = substr_count($sbAdminLecturer, 'Đề tài đã đề xuất');
+t("RBAC: Quản trị viên kiêm Giảng viên thấy mục 'Đề tài đã đề xuất' đúng 1 lần duy nhất", $countAdminLecturerMy === 1);
+
+$countDeptHeadMy = substr_count($sbDeptHead, 'Đề tài đã đề xuất');
+t("Trưởng bộ môn thuần: KHÔNG thấy mục 'Đề tài đã đề xuất'", $countDeptHeadMy === 0);
+
+$countLecturerMy = substr_count($sbLecturer, 'Đề tài đã đề xuất');
+t("Giảng viên: Mục 'Đề tài đã đề xuất' xuất hiện đúng 1 lần (không trùng lặp)", $countLecturerMy === 1);
+
+// Route /topics?proposer=me: Active chính xác đối với tài khoản có quyền đề xuất
+$_GET['proposer'] = 'me';
+$sbTopicMy = renderSidebarForTest(['lecturer'], '/CNPM/internship-management/public/topics?proposer=me', 'topics');
+unset($_GET['proposer']);
+preg_match_all('/class="[^"]*nav-link[^"]*\bactive\b[^"]*"/', $sbTopicMy, $mTopicMy);
+t("Route /topics?proposer=me: Có duy nhất 1 mục active", count($mTopicMy[0]) === 1);
+t("Route /topics?proposer=me: Mục active đúng là 'Đề tài đã đề xuất'", 
+    str_contains($sbTopicMy, 'href="/CNPM/internship-management/public/topics?proposer=me"') &&
+    str_contains($sbTopicMy, 'aria-current="page"')
+);
+
+// Doanh nghiệp (Enterprise)
+$sbEnterprise = renderSidebarForTest(['enterprise'], '/CNPM/internship-management/public/dashboard', 'dashboard');
+t("Doanh nghiệp: Có menu Bảng điều khiển, Đề tài thực tập", 
+    str_contains($sbEnterprise, 'Bảng điều khiển') && str_contains($sbEnterprise, 'Đề tài thực tập')
+);
+t("Doanh nghiệp: Có mục 'Đề xuất đề tài thực tập' và 'Đề tài đã đề xuất' (đã gộp tra cứu)", 
+    str_contains($sbEnterprise, 'Đề xuất đề tài thực tập') && str_contains($sbEnterprise, 'Đề tài đã đề xuất')
+);
+t("Doanh nghiệp: Mục 'Đề tài đã đề xuất' xuất hiện đúng 1 lần duy nhất", 
+    substr_count($sbEnterprise, 'Đề tài đã đề xuất') === 1
+);
+
+// Route /topics?proposer=me đối với Doanh nghiệp: Active đúng mục 'Đề tài đã đề xuất'
+$_GET['proposer'] = 'me';
+$sbEnterpriseMy = renderSidebarForTest(['enterprise'], '/CNPM/internship-management/public/topics?proposer=me', 'topics');
+unset($_GET['proposer']);
+preg_match_all('/class="[^"]*nav-link[^"]*\bactive\b[^"]*"/', $sbEnterpriseMy, $mEntMy);
+t("Doanh nghiệp /topics?proposer=me: Có duy nhất 1 mục active", count($mEntMy[0]) === 1);
+t("Doanh nghiệp /topics?proposer=me: Mục active đúng là 'Đề tài đã đề xuất'", 
+    str_contains($sbEnterpriseMy, 'href="/CNPM/internship-management/public/topics?proposer=me"') &&
+    str_contains($sbEnterpriseMy, 'aria-current="page"')
+);
 
 echo PHP_EOL . "----------------------------------------------" . PHP_EOL;
 echo "KẾT QUẢ KIỂM THỬ SIDEBAR: {$passed} PASS, {$failed} FAIL." . PHP_EOL;

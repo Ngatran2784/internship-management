@@ -47,7 +47,10 @@ $roleLabels = [
     'student'         => 'Sinh viên',
     'enterprise'      => 'Doanh nghiệp',
 ];
-$displayRole = !empty($currentRoles) ? ($roleLabels[$currentRoles[0]] ?? $currentRoles[0]) : 'Thành viên';
+$primaryRole = class_exists(\App\Controllers\AuthController::class) 
+    ? \App\Controllers\AuthController::primaryRole() 
+    : (!empty($currentRoles) ? $currentRoles[0] : null);
+$displayRole = $primaryRole !== null ? ($roleLabels[$primaryRole] ?? $primaryRole) : 'Thành viên';
 $isAdmin = in_array('admin', $currentRoles, true);
 $isStudent = in_array('student', $currentRoles, true);
 $canManagePeriods = $isAdmin || in_array('training_dept', $currentRoles, true);

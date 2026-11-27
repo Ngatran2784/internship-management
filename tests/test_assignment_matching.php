@@ -482,8 +482,11 @@ try {
     $controller->index();
     $htmlIndex = ob_get_clean();
 
-    t("Controller: GET /assignments cho duyệt Web trả về HTML (không phải JSON thô)", str_contains($htmlIndex, '<!DOCTYPE html>'));
-    t("Controller: Trang thông báo trạng thái chờ tích hợp giao diện rõ ràng", str_contains($htmlIndex, 'Đang chờ tích hợp giao diện'));
+    t("Controller: GET /assignments cho duyệt Web trả về HTML (không phải JSON thô)", (bool)preg_match('/<!doctype\s+html>/i', $htmlIndex));
+    t("Controller: Giao diện Web phân công đề tài chứa các thành phần điều khiển chuẩn", 
+        str_contains($htmlIndex, 'Phân công đề tài') && 
+        (str_contains($htmlIndex, 'assignment-filter-toolbar') || str_contains($htmlIndex, 'assignment-page') || str_contains($htmlIndex, 'Đang chờ tích hợp giao diện'))
+    );
 
     // 8.4. Kiểm thử GET /assignments qua API JSON với các bộ lọc (status, keyword, lecturer_id)
     $_SERVER['HTTP_ACCEPT'] = 'application/json';

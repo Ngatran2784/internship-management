@@ -159,6 +159,24 @@ class User
     }
 
     /**
+     * Đếm tổng số người dùng có vai trò cụ thể (tối ưu hiệu năng Dashboard)
+     */
+    public static function countByRole(string $roleName): int
+    {
+        $pdo = Database::getConnection();
+        $stmt = $pdo->prepare('
+            SELECT COUNT(DISTINCT u.id) 
+            FROM `users` u
+            INNER JOIN `user_roles` ur ON u.id = ur.user_id
+            INNER JOIN `roles` r ON ur.role_id = r.id
+            WHERE r.name = :role_name
+        ');
+        $stmt->execute(['role_name' => $roleName]);
+
+        return (int)$stmt->fetchColumn();
+    }
+
+    /**
      * Gán lại toàn bộ vai trò cho người dùng (thay thế tập vai trò cũ bằng tập mới)
      *
      * @param int[] $roleIds

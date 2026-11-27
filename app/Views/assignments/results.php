@@ -30,6 +30,7 @@ $escape = $escape ?? static fn(mixed $value): string => htmlspecialchars(
                         <th>Giảng viên hướng dẫn</th>
                         <th>Phương thức</th>
                         <th>Trạng thái</th>
+                        <th class="text-end">Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -79,10 +80,25 @@ $escape = $escape ?? static fn(mixed $value): string => htmlspecialchars(
                                     <?= $escape($statusLabels[$status] ?? $status) ?>
                                 </span>
                             </td>
+                            <td class="text-end">
+                                <?php if ($status !== 'cancelled'): ?>
+                                    <form method="post" action="<?= $escape($baseUrl) ?>/assignments/cancel" class="d-inline"
+                                          onsubmit="return confirm('Bạn có chắc chắn muốn hủy phân công của sinh viên <?= $escape($assignment['student_name'] ?? '') ?>?');">
+                                        <input type="hidden" name="_csrf" value="<?= $escape($csrf_token ?? '') ?>">
+                                        <input type="hidden" name="assignment_id" value="<?= (int)($assignment['id'] ?? 0) ?>">
+                                        <input type="hidden" name="period_id" value="<?= (int)($assignment['period_id'] ?? 0) ?>">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger py-1 px-2" title="Hủy phân công">
+                                            <i class="ti ti-x me-1"></i>Hủy
+                                        </button>
+                                    </form>
+                                <?php else: ?>
+                                    <span class="text-muted small">Đã hủy</span>
+                                <?php endif; ?>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
                     <tr id="assignment-empty-filter" <?= $assignments ? 'hidden' : '' ?>>
-                        <td colspan="8" class="text-center text-secondary py-4">
+                        <td colspan="9" class="text-center text-secondary py-4">
                             <?= $assignments ? 'Không có kết quả phù hợp bộ lọc.' : 'Đợt này chưa có sinh viên được phân công.' ?>
                         </td>
                     </tr>

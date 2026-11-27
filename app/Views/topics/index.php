@@ -1,6 +1,18 @@
 <?php
-$pageTitle = 'Quản lý đề tài';
-$pageHeading = 'Danh sách đề tài thực tập & đồ án';
+$isMyTopics = (isset($_GET['proposer']) && $_GET['proposer'] === 'me');
+$userRoles = $_SESSION['roles'] ?? [];
+$isEnterpriseUser = in_array('enterprise', $userRoles, true) && !in_array('admin', $userRoles, true);
+
+if ($isMyTopics) {
+    $pageTitle = $isEnterpriseUser ? 'Đề tài đã đề xuất' : 'Đề tài của tôi';
+    $pageHeading = $isEnterpriseUser ? 'Đề tài đã đề xuất' : 'Đề tài của tôi';
+} elseif ($isEnterpriseUser) {
+    $pageTitle = 'Tra cứu đề tài thực tập';
+    $pageHeading = 'Tra cứu đề tài thực tập';
+} else {
+    $pageTitle = 'Quản lý đề tài';
+    $pageHeading = 'Danh sách đề tài thực tập & đồ án';
+}
 $pageDescription = 'HỆ THỐNG QUẢN LÝ THỰC TẬP VÀ ĐỒ ÁN SINH VIÊN';
 $activePage = 'topics';
 require dirname(__DIR__) . '/layouts/header.php';

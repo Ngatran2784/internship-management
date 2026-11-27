@@ -42,6 +42,12 @@ class TopicController extends Controller
             'proposer_id' => null,
         ];
 
+        // Xử lý bộ lọc đề tài do tôi đề xuất (?proposer=me)
+        $isMyTopics = (isset($_GET['proposer']) && $_GET['proposer'] === 'me');
+        if ($isMyTopics && $userId > 0) {
+            $filters['proposer_id'] = $userId;
+        }
+
         // Phân quyền dữ liệu theo vai trò
         $isAdminOrTraining = in_array('admin', $userRoles, true) || in_array('training_dept', $userRoles, true);
         $isStudent         = in_array('student', $userRoles, true) && !$isAdminOrTraining;
@@ -170,9 +176,26 @@ class TopicController extends Controller
         unset($_SESSION['topic_old'], $_SESSION['topic_errors']);
 
         // Lấy danh sách các đợt đang mở (active) hoặc bản nháp (nếu admin)
+        $userRoles = AuthController::roles();
+        $isEnterpriseOnly = in_array('enterprise', $userRoles, true) && !in_array('admin', $userRoles, true) && !in_array('training_dept', $userRoles, true);
+
         $periods = InternshipPeriod::all(['status' => InternshipPeriod::STATUS_ACTIVE]);
         if (AuthController::hasRole('admin', 'training_dept')) {
             $periods = InternshipPeriod::all();
+        }
+        if ($isEnterpriseOnly) {
+            $periods = array_values(array_filter($periods, fn($p) => ($p['type'] ?? '') === InternshipPeriod::TYPE_INTERNSHIP));
+            if (empty($old['type'])) {
+                $old['type'] = Topic::TYPE_INTERNSHIP;
+            }
+        }
+
+        // Hỗ trợ pre-fill period_id từ URL nếu có
+        if (empty($old['period_id']) && !empty($_GET['period_id'])) {
+            $reqPeriodId = filter_var($_GET['period_id'], FILTER_VALIDATE_INT);
+            if ($reqPeriodId && $reqPeriodId > 0) {
+                $old['period_id'] = $reqPeriodId;
+            }
         }
 
         $this->respond('topics/create', [
@@ -221,6 +244,11 @@ class TopicController extends Controller
         $type        = is_string($_POST['type'] ?? null) ? trim($_POST['type']) : '';
         $periodId    = filter_var($_POST['period_id'] ?? null, FILTER_VALIDATE_INT) ?: 0;
         $maxStudents = filter_var($_POST['max_students'] ?? null, FILTER_VALIDATE_INT) ?: 1;
+
+        $isEnterpriseOnly = in_array('enterprise', $userRoles, true) && !in_array('admin', $userRoles, true) && !in_array('training_dept', $userRoles, true);
+        if ($isEnterpriseOnly) {
+            $type = Topic::TYPE_INTERNSHIP;
+        }
 
         // Người đề xuất mặc định là tài khoản đang đăng nhập
         $proposerId = $userId;

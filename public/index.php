@@ -120,9 +120,20 @@ $router->post('/wishes/update',  [TopicWishController::class, 'save']);
 $router->post('/wishes/delete',  [TopicWishController::class, 'delete']);
 
 // --- Phân công đề tài & giảng viên ---
-$router->get('/assignments',             [TopicAssignmentController::class, 'index']);
-$router->get('/assignments/preview',     [TopicAssignmentController::class, 'preview']);
-$router->post('/assignments/auto-match', [TopicAssignmentController::class, 'autoMatch']);
+$router->get('/assignments',                     [TopicAssignmentController::class, 'index']);
+$router->get('/assignments/create',              [TopicAssignmentController::class, 'create']);
+$router->post('/assignments/create',             [TopicAssignmentController::class, 'store']);
+$router->post('/assignments/manual',             [TopicAssignmentController::class, 'store']);
+$router->get('/assignments/preview',             [TopicAssignmentController::class, 'preview']);
+$router->post('/assignments/auto-match',         [TopicAssignmentController::class, 'autoMatch']);
+$router->post('/assignments/publish',            [TopicAssignmentController::class, 'publish']);
+$router->post('/assignments/unpublish',          [TopicAssignmentController::class, 'unpublish']);
+$router->post('/assignments/cancel',             [TopicAssignmentController::class, 'cancel']);
+$router->get('/assignments/my-students',         [TopicAssignmentController::class, 'supervisorStudents']);
+$router->get('/assignments/supervisor-students', [TopicAssignmentController::class, 'supervisorStudents']);
+$router->get('/assignments/enterprise-students', [TopicAssignmentController::class, 'enterpriseStudents']);
+$router->get('/assignments/my-result',           [TopicAssignmentController::class, 'myResult']);
+$router->get('/assignments/result',              [TopicAssignmentController::class, 'myResult']);
 
 // Hỗ trợ alias trực tiếp /topics/{id} sang xem chi tiết đề tài
 if (preg_match('#/topics/(\d+)$#', $reqPath, $topicMatches)) {

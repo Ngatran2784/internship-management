@@ -165,11 +165,14 @@ class TopicAssignment
                 t.name AS topic_name,
                 t.description AS topic_description,
                 t.max_students AS topic_max_students,
+                t.type AS topic_type,
                 u_l.full_name AS lecturer_name,
                 u_l.email AS lecturer_email,
                 u_l.phone AS lecturer_phone,
                 p.code AS period_code,
-                p.name AS period_name
+                p.name AS period_name,
+                p.start_date AS period_start_date,
+                p.end_date AS period_end_date
             FROM topic_assignments a
             JOIN topics t ON a.topic_id = t.id
             JOIN users u_l ON a.lecturer_id = u_l.id
@@ -216,10 +219,13 @@ class TopicAssignment
                 u_s.email AS student_email,
                 u_s.phone AS student_phone,
                 t.code AS topic_code,
-                t.name AS topic_name
+                t.name AS topic_name,
+                p.code AS period_code,
+                p.name AS period_name
             FROM topic_assignments a
             JOIN users u_s ON a.student_id = u_s.id
             JOIN topics t ON a.topic_id = t.id
+            JOIN internship_periods p ON a.period_id = p.id
             WHERE a.lecturer_id = :lecturer_id
               AND a.period_id = :period_id
               AND a.status != :cancelled_status
@@ -237,6 +243,58 @@ class TopicAssignment
         }
 
         $sql .= " ORDER BY t.id ASC, u_s.username ASC";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Lấy danh sách sinh viên được phân công vào đề tài do Doanh nghiệp tiếp nhận / đề xuất
+     */
+    public static function getByEnterprise(int $enterpriseId, ?int $periodId = null, bool $onlyPublished = false): array
+    {
+        $pdo = Database::getConnection();
+
+        $sql = "
+            SELECT 
+                a.*,
+                u_s.username AS student_code,
+                u_s.full_name AS student_name,
+                u_s.email AS student_email,
+                u_s.phone AS student_phone,
+                t.code AS topic_code,
+                t.name AS topic_name,
+                u_l.full_name AS lecturer_name,
+                u_l.email AS lecturer_email,
+                p.code AS period_code,
+                p.name AS period_name
+            FROM topic_assignments a
+            JOIN users u_s ON a.student_id = u_s.id
+            JOIN topics t ON a.topic_id = t.id
+            JOIN users u_l ON a.lecturer_id = u_l.id
+            JOIN internship_periods p ON a.period_id = p.id
+            WHERE t.proposer_id = :enterprise_id
+              AND a.status != :cancelled_status
+        ";
+
+        $params = [
+            ':enterprise_id'    => $enterpriseId,
+            ':cancelled_status' => self::STATUS_CANCELLED,
+        ];
+
+        if ($periodId !== null) {
+            $sql .= " AND a.period_id = :period_id";
+            $params[':period_id'] = $periodId;
+        }
+
+        if ($onlyPublished) {
+            $sql .= " AND a.status = :pub_status";
+            $params[':pub_status'] = self::STATUS_PUBLISHED;
+        }
+
+        $sql .= " ORDER BY p.id DESC, t.id ASC, u_s.username ASC";
 
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
@@ -362,7 +420,21 @@ class TopicAssignment
         $statRow = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
         $activeAssignments = (int)($statRow['active_assignments'] ?? 0);
-        $unassignedCount = max(0, $totalRegistered - $activeAssignments);
+
+        // Đếm chính xác sinh viên đã nộp nguyện vọng nhưng chưa có bản ghi phân công hợp lệ (status != cancelled)
+        $stmtUnassigned = $pdo->prepare("
+            SELECT COUNT(DISTINCT w.student_id)
+            FROM topic_wishes w
+            LEFT JOIN topic_assignments a 
+              ON w.student_id = a.student_id 
+             AND w.period_id = a.period_id 
+             AND a.status != 'cancelled'
+            WHERE w.period_id = :p 
+              AND a.id IS NULL
+        ");
+        $stmtUnassigned->execute([':p' => $periodId]);
+        $unassignedWishCount = (int)$stmtUnassigned->fetchColumn();
+        $unassignedCount = $unassignedWishCount;
 
         // 3. Thống kê đề tài
         $stmt = $pdo->prepare("
@@ -380,6 +452,7 @@ class TopicAssignment
             'total_registered'     => $totalRegistered,
             'active_assignments'   => $activeAssignments,
             'unassigned_count'     => $unassignedCount,
+            'unassigned_wish_count'=> $unassignedWishCount,
             'draft_count'          => (int)($statRow['draft_count'] ?? 0),
             'published_count'      => (int)($statRow['published_count'] ?? 0),
             'auto_count'           => (int)($statRow['auto_count'] ?? 0),

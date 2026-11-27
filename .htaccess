@@ -1,0 +1,12 @@
+# Chặn duyệt danh mục thư mục
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Chặn tuyệt đối truy cập HTTP trực tiếp vào các thư mục mã nguồn và cấu hình nhạy cảm
+    RewriteRule ^(app|config|database|tests|docs)/ - [F,L]
+
+    # Tự động điều hướng từ thư mục gốc vào thư mục public/
+    RewriteRule ^$ public/ [L,R=301]
+</IfModule>

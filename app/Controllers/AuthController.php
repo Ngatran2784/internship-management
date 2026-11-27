@@ -189,11 +189,56 @@ class AuthController extends Controller
         return !empty($_SESSION['user_id']);
     }
 
+    public static function id(): ?int
+    {
+        self::startSession();
+        $id = $_SESSION['user_id'] ?? null;
+
+        return $id !== null ? (int)$id : null;
+    }
+
+    public static function user(): ?array
+    {
+        self::startSession();
+
+        return is_array($_SESSION['user'] ?? null) ? $_SESSION['user'] : null;
+    }
+
     public static function roles(): array
     {
         self::startSession();
 
         return is_array($_SESSION['roles'] ?? null) ? $_SESSION['roles'] : [];
+    }
+
+    /**
+     * Xác định vai trò đại diện cao nhất của người dùng phục vụ hiển thị giao diện (UI presentation)
+     * Trả về null nếu người dùng không có vai trò hợp lệ nào trong hệ thống (tuyệt đối không mặc định là student)
+     * LƯU Ý BẢO MẬT: Tuyệt đối KHÔNG sử dụng primaryRole() thay thế cho hasRole() hoặc requireRole()
+     */
+    public static function primaryRole(): ?string
+    {
+        $roles = self::roles();
+        if (empty($roles)) {
+            return null;
+        }
+
+        $hierarchy = [
+            'admin',
+            'training_dept',
+            'department_head',
+            'lecturer',
+            'enterprise',
+            'student',
+        ];
+
+        foreach ($hierarchy as $expected) {
+            if (in_array($expected, $roles, true)) {
+                return $expected;
+            }
+        }
+
+        return null;
     }
 
     /** Người dùng hiện tại có ÍT NHẤT MỘT trong các vai trò được liệt kê không */

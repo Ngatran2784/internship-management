@@ -4,7 +4,10 @@ namespace App\Controllers;
 
 use App\Core\Controller;
 use App\Models\InternshipPeriod;
+use App\Models\Topic;
 use App\Models\TopicAssignment;
+use App\Models\TopicWish;
+use App\Models\User;
 use App\Services\TopicMatchingService;
 use InvalidArgumentException;
 use Throwable;
@@ -229,6 +232,372 @@ class TopicAssignmentController extends Controller
 
         // Nếu client duyệt Web thông thường: Phản hồi View hoặc trang thông báo chuẩn
         $this->respond('assignments/index', $viewData);
+    }
+
+    /**
+     * GET /assignments/create - Màn hình tạo phân công thủ công
+     */
+    public function create(): void
+    {
+        AuthController::startSession();
+        AuthController::requireLogin();
+
+        $roles = AuthController::roles();
+        if (!self::canManage($roles)) {
+            $this->fail('Bạn không có quyền quản lý phân công đề tài.', 403, '/dashboard');
+            return;
+        }
+
+        $periods = InternshipPeriod::all();
+        $selectedPeriodId = filter_var($_GET['period_id'] ?? null, FILTER_VALIDATE_INT);
+        if (!$selectedPeriodId && !empty($periods)) {
+            foreach ($periods as $p) {
+                if (($p['status'] ?? '') === 'active') {
+                    $selectedPeriodId = (int)$p['id'];
+                    break;
+                }
+            }
+            if (!$selectedPeriodId) {
+                $selectedPeriodId = (int)$periods[0]['id'];
+            }
+        }
+
+        $students = $selectedPeriodId ? TopicAssignment::getUnassignedStudents($selectedPeriodId) : [];
+        if (empty($students)) {
+            $students = User::all('student');
+        }
+
+        $topics = $selectedPeriodId ? Topic::all(['period_id' => $selectedPeriodId, 'status' => 'approved']) : [];
+        $lecturers = User::all('lecturer');
+
+        $baseUrl = rtrim((string)parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH), '/');
+        // Trích xuất base URL chuẩn
+        $reqUri = $_SERVER['REQUEST_URI'] ?? '';
+        $base = '/CNPM/internship-management/public';
+
+        $this->render('assignments/create', [
+            'periods'   => $periods,
+            'students'  => $students,
+            'topics'    => $topics,
+            'lecturers' => $lecturers,
+            'old'       => ['period_id' => $selectedPeriodId],
+            'errors'    => [],
+            'csrfToken' => AuthController::csrfToken(),
+            'submitUrl' => $base . '/assignments/create',
+            'canSubmit' => true,
+            'success'   => AuthController::pullFlash('success'),
+            'error'     => AuthController::pullFlash('error'),
+        ]);
+    }
+
+    /**
+     * POST /assignments/create & POST /assignments/manual - Lưu phân công thủ công
+     */
+    public function store(): void
+    {
+        AuthController::startSession();
+        AuthController::requireLogin();
+
+        $roles = AuthController::roles();
+        if (!self::canManage($roles)) {
+            $this->fail('Bạn không có quyền phân công đề tài.', 403, '/dashboard');
+            return;
+        }
+
+        $csrfToken = $_POST['_csrf'] ?? '';
+        if (!AuthController::verifyCsrf($csrfToken)) {
+            $this->fail('Mã bảo mật (CSRF) không hợp lệ.', 403, '/assignments');
+            return;
+        }
+
+        $periodId   = filter_var($_POST['period_id'] ?? null, FILTER_VALIDATE_INT);
+        $studentId  = filter_var($_POST['student_id'] ?? null, FILTER_VALIDATE_INT);
+        $topicId    = filter_var($_POST['topic_id'] ?? null, FILTER_VALIDATE_INT);
+        $lecturerId = filter_var($_POST['lecturer_id'] ?? null, FILTER_VALIDATE_INT);
+        $notes      = trim((string)($_POST['notes'] ?? ''));
+
+        if (!$periodId || !$studentId || !$topicId || !$lecturerId) {
+            $this->fail('Vui lòng điền đầy đủ thông tin phân công.', 422, '/assignments' . ($periodId ? '?period_id=' . $periodId : ''));
+            return;
+        }
+
+        $userId = (int)($_SESSION['user_id'] ?? 0);
+        try {
+            TopicAssignment::assignManual($periodId, $studentId, $topicId, $lecturerId, $userId, $notes ?: null);
+            AuthController::setFlash('success', 'Phân công đề tài thủ công thành công.');
+            AuthController::go('/assignments?period_id=' . $periodId);
+        } catch (Throwable $e) {
+            $this->fail('Lỗi phân công: ' . $e->getMessage(), 422, '/assignments?period_id=' . $periodId);
+        }
+    }
+
+    /**
+     * POST /assignments/publish - Công bố kết quả phân công cho toàn đợt
+     */
+    public function publish(): void
+    {
+        AuthController::startSession();
+        AuthController::requireLogin();
+
+        $roles = AuthController::roles();
+        if (!self::canManage($roles)) {
+            $this->fail('Bạn không có quyền công bố kết quả phân công.', 403, '/dashboard');
+            return;
+        }
+
+        $csrfToken = $_POST['_csrf'] ?? '';
+        if (!AuthController::verifyCsrf($csrfToken)) {
+            $this->fail('Mã bảo mật (CSRF) không hợp lệ.', 403, '/assignments');
+            return;
+        }
+
+        $periodId = filter_var($_POST['period_id'] ?? null, FILTER_VALIDATE_INT);
+        if (!$periodId) {
+            $this->fail('Vui lòng chọn đợt thực tập / đồ án.', 422, '/assignments');
+            return;
+        }
+
+        $userId = (int)($_SESSION['user_id'] ?? 0);
+        try {
+            $count = TopicAssignment::publishPeriodAssignments((int)$periodId, $userId);
+            AuthController::setFlash('success', "Công bố kết quả phân công thành công cho {$count} sinh viên.");
+            AuthController::go('/assignments?period_id=' . $periodId);
+        } catch (Throwable $e) {
+            $this->fail('Lỗi công bố kết quả: ' . $e->getMessage(), 500, '/assignments?period_id=' . $periodId);
+        }
+    }
+
+    /**
+     * POST /assignments/unpublish - Rút lại công bố kết quả phân công về trạng thái dự thảo
+     */
+    public function unpublish(): void
+    {
+        AuthController::startSession();
+        AuthController::requireLogin();
+
+        $roles = AuthController::roles();
+        if (!self::canManage($roles)) {
+            $this->fail('Bạn không có quyền rút lại công bố kết quả.', 403, '/dashboard');
+            return;
+        }
+
+        $csrfToken = $_POST['_csrf'] ?? '';
+        if (!AuthController::verifyCsrf($csrfToken)) {
+            $this->fail('Mã bảo mật (CSRF) không hợp lệ.', 403, '/assignments');
+            return;
+        }
+
+        $periodId = filter_var($_POST['period_id'] ?? null, FILTER_VALIDATE_INT);
+        if (!$periodId) {
+            $this->fail('Vui lòng chọn đợt thực tập / đồ án.', 422, '/assignments');
+            return;
+        }
+
+        try {
+            $count = TopicAssignment::unpublishPeriodAssignments((int)$periodId);
+            AuthController::setFlash('success', "Đã rút lại công bố kết quả phân công về bản dự thảo cho {$count} sinh viên.");
+            AuthController::go('/assignments?period_id=' . $periodId);
+        } catch (Throwable $e) {
+            $this->fail('Lỗi rút lại công bố: ' . $e->getMessage(), 500, '/assignments?period_id=' . $periodId);
+        }
+    }
+
+    /**
+     * POST /assignments/cancel - Hủy một bản ghi phân công
+     */
+    public function cancel(): void
+    {
+        AuthController::startSession();
+        AuthController::requireLogin();
+
+        $roles = AuthController::roles();
+        if (!self::canManage($roles)) {
+            $this->fail('Bạn không có quyền hủy phân công.', 403, '/dashboard');
+            return;
+        }
+
+        $csrfToken = $_POST['_csrf'] ?? '';
+        if (!AuthController::verifyCsrf($csrfToken)) {
+            $this->fail('Mã bảo mật (CSRF) không hợp lệ.', 403, '/assignments');
+            return;
+        }
+
+        $assignmentId = filter_var($_POST['assignment_id'] ?? null, FILTER_VALIDATE_INT);
+        $periodId     = filter_var($_POST['period_id'] ?? null, FILTER_VALIDATE_INT);
+        $reason       = trim((string)($_POST['reason'] ?? ''));
+
+        if (!$assignmentId) {
+            $this->fail('Mã phân công không hợp lệ.', 422, '/assignments' . ($periodId ? '?period_id=' . $periodId : ''));
+            return;
+        }
+
+        try {
+            TopicAssignment::cancelAssignment($assignmentId, $reason ?: 'Hủy bởi người quản lý');
+            AuthController::setFlash('success', 'Đã hủy phân công thành công.');
+            AuthController::go('/assignments?period_id=' . ($periodId ?: ''));
+        } catch (Throwable $e) {
+            $this->fail('Lỗi hủy phân công: ' . $e->getMessage(), 500, '/assignments?period_id=' . ($periodId ?: ''));
+        }
+    }
+
+    /**
+     * GET /assignments/my-students & GET /assignments/supervisor-students
+     * Danh sách sinh viên được phân công cho Giảng viên
+     */
+    public function supervisorStudents(): void
+    {
+        AuthController::startSession();
+        AuthController::requireLogin();
+
+        $roles = AuthController::roles();
+        if (!in_array('lecturer', $roles, true) && !in_array('admin', $roles, true) && !in_array('department_head', $roles, true)) {
+            $this->fail('Chức năng này chỉ dành cho Giảng viên hướng dẫn.', 403, '/dashboard');
+            return;
+        }
+
+        $lecturerId = (int)($_SESSION['user_id'] ?? 0);
+        $periods    = InternshipPeriod::all();
+        $selectedPeriodId = filter_var($_GET['period_id'] ?? null, FILTER_VALIDATE_INT);
+
+        if (!$selectedPeriodId && !empty($periods)) {
+            foreach ($periods as $p) {
+                if (($p['status'] ?? '') === 'active') {
+                    $selectedPeriodId = (int)$p['id'];
+                    break;
+                }
+            }
+            if (!$selectedPeriodId) {
+                $selectedPeriodId = (int)$periods[0]['id'];
+            }
+        }
+
+        $students = [];
+        if ($selectedPeriodId) {
+            $students = TopicAssignment::getByLecturer($lecturerId, $selectedPeriodId, false);
+        }
+
+        $this->render('assignments/supervisor_students', [
+            'periods'        => $periods,
+            'selectedPeriod' => $selectedPeriodId,
+            'students'       => $students,
+            'error'          => AuthController::pullFlash('error'),
+            'success'        => AuthController::pullFlash('success'),
+        ]);
+    }
+
+    /**
+     * GET /assignments/enterprise-students
+     * Danh sách sinh viên thực tập được giao cho Doanh nghiệp
+     */
+    public function enterpriseStudents(): void
+    {
+        AuthController::startSession();
+        AuthController::requireLogin();
+
+        $roles = AuthController::roles();
+        if (!in_array('enterprise', $roles, true) && !in_array('admin', $roles, true)) {
+            $this->fail('Chức năng này chỉ dành cho Doanh nghiệp.', 403, '/dashboard');
+            return;
+        }
+
+        $enterpriseId = (int)($_SESSION['user_id'] ?? 0);
+        $periods      = InternshipPeriod::all();
+        $selectedPeriodId = filter_var($_GET['period_id'] ?? null, FILTER_VALIDATE_INT);
+
+        if (!$selectedPeriodId && !empty($periods)) {
+            foreach ($periods as $p) {
+                if (($p['status'] ?? '') === 'active' && ($p['type'] ?? '') === 'internship') {
+                    $selectedPeriodId = (int)$p['id'];
+                    break;
+                }
+            }
+            if (!$selectedPeriodId) {
+                $selectedPeriodId = (int)$periods[0]['id'];
+            }
+        }
+
+        $students = TopicAssignment::getByEnterprise($enterpriseId, $selectedPeriodId);
+
+        $this->render('assignments/enterprise_students', [
+            'periods'        => $periods,
+            'selectedPeriod' => $selectedPeriodId,
+            'students'       => $students,
+            'error'          => AuthController::pullFlash('error'),
+            'success'        => AuthController::pullFlash('success'),
+        ]);
+    }
+
+    /**
+     * GET /assignments/my-result (và /assignments/result)
+     * Kết quả phân công đề tài & Giảng viên hướng dẫn dành cho Sinh viên
+     */
+    public function myResult(): void
+    {
+        AuthController::startSession();
+        AuthController::requireLogin();
+
+        $roles = AuthController::roles();
+        if (!in_array('student', $roles, true) && !in_array('admin', $roles, true)) {
+            $this->fail('Chức năng này chỉ dành cho tài khoản Sinh viên.', 403, '/dashboard');
+            return;
+        }
+
+        $studentId = (int)AuthController::id();
+        $allPeriods = InternshipPeriod::all();
+        $isStudentOnly = in_array('student', $roles, true) && !in_array('admin', $roles, true) && !in_array('training_dept', $roles, true);
+
+        if ($isStudentOnly) {
+            $allPeriods = array_values(array_filter($allPeriods, static fn(array $p): bool => ($p['status'] ?? '') !== InternshipPeriod::STATUS_DRAFT));
+        }
+
+        $selectedPeriodId = filter_var($_GET['period_id'] ?? null, FILTER_VALIDATE_INT);
+        $selectedPeriod = null;
+
+        if ($selectedPeriodId) {
+            foreach ($allPeriods as $p) {
+                if ((int)$p['id'] === $selectedPeriodId) {
+                    $selectedPeriod = $p;
+                    break;
+                }
+            }
+        }
+
+        if (!$selectedPeriod && !empty($allPeriods)) {
+            foreach ($allPeriods as $p) {
+                if (($p['status'] ?? '') === InternshipPeriod::STATUS_ACTIVE) {
+                    $selectedPeriod = $p;
+                    $selectedPeriodId = (int)$p['id'];
+                    break;
+                }
+            }
+            if (!$selectedPeriod) {
+                $selectedPeriod = $allPeriods[0];
+                $selectedPeriodId = (int)$allPeriods[0]['id'];
+            }
+        }
+
+        $isPublished = false;
+        $assignment = null;
+        $wishes = [];
+
+        if ($selectedPeriodId) {
+            $isPublished = TopicAssignment::hasPublishedAssignments($selectedPeriodId);
+            $assignment = TopicAssignment::getByStudent($studentId, $selectedPeriodId, true);
+            $wishes = TopicWish::getByStudentAndPeriod($studentId, $selectedPeriodId);
+        }
+
+        $this->render('assignments/my_result', [
+            'allPeriods'       => $allPeriods,
+            'selectedPeriod'   => $selectedPeriod,
+            'selectedPeriodId' => $selectedPeriodId,
+            'isPublished'      => $isPublished,
+            'assignment'       => $assignment,
+            'wishes'           => $wishes,
+            'statusLabels'     => InternshipPeriod::STATUS_LABELS,
+            'typeLabels'       => InternshipPeriod::TYPE_LABELS,
+            'error'            => AuthController::pullFlash('error'),
+            'success'          => AuthController::pullFlash('success'),
+        ]);
     }
 
     // =========================================================================

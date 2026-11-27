@@ -47,6 +47,12 @@ foreach ($roles as $name => [$display, $desc]) {
 $accounts = [
     ['admin', 'admin@example.com', 'Admin@123', 'Quản trị viên', 'admin'],
     ['sv001', 'sv001@example.com', 'Sv@12345', 'Sinh viên Mẫu', 'student'],
+    ['pdt001', 'pdt001@example.com', 'Pdt@12345', 'Cán bộ Đào tạo', 'training_dept'],
+    ['tbm001', 'tbm001@example.com', 'Tbm@12345', 'Trưởng bộ môn Mẫu', 'department_head'],
+    ['gv001', 'gv001@example.com', 'Gv@12345', 'Giảng viên Mẫu', 'lecturer'],
+    ['dn001', 'dn001@example.com', 'Dn@12345', 'Doanh nghiệp Mẫu', 'enterprise'],
+    ['tbm_gv', 'tbm_gv@example.com', 'TbmGv@123', 'Trưởng Bộ Môn Kiêm Giảng Viên', ['department_head', 'lecturer']],
+    ['admin_sv', 'admin_sv@example.com', 'AdminSv@123', 'Quản trị viên Kiêm Sinh viên', ['admin', 'student']],
 ];
 
 foreach ($accounts as [$username, $email, $password, $fullName, $roleName]) {
@@ -55,8 +61,14 @@ foreach ($accounts as [$username, $email, $password, $fullName, $roleName]) {
         continue;
     }
     $id = User::create(compact('username', 'email', 'password') + ['full_name' => $fullName]);
-    User::assignRoles($id, [(int)Role::findByName($roleName)['id']]);
-    echo "+ Tạo tài khoản: {$username} / {$password} ({$roleName})\n";
+    $roleIds = [];
+    foreach ((array)$roleName as $rName) {
+        $r = Role::findByName($rName);
+        if ($r) $roleIds[] = (int)$r['id'];
+    }
+    User::assignRoles($id, $roleIds);
+    $rStr = is_array($roleName) ? implode('+', $roleName) : $roleName;
+    echo "+ Tạo tài khoản: {$username} / {$password} ({$rStr})\n";
 }
 
 

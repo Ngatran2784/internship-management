@@ -102,16 +102,15 @@ foreach ($periods as $period) {
                 <p class="text-secondary mb-0">Tra cứu kết quả phân công và đối sánh nguyện vọng theo đợt.</p>
             </div>
             <?php if ($currentPeriod > 0): ?>
-                <div class="assignment-action-form d-flex flex-column flex-sm-row gap-2">
+                <div class="assignment-action-form d-flex flex-column flex-sm-row flex-wrap gap-2">
                     <a class="btn btn-outline-primary" href="#assignment-results">
                         <i class="ti ti-list-check me-1"></i>Xem kết quả
                     </a>
-                    <button type="button" class="btn btn-outline-secondary" disabled
-                            title="Backend chưa có route phân công thủ công">
+                    <a class="btn btn-outline-secondary" href="<?= $escape($baseUrl) ?>/assignments/create?period_id=<?= $currentPeriod ?>">
                         <i class="ti ti-user-plus me-1"></i>Phân công thủ công
-                    </button>
+                    </a>
                     <form method="post" action="<?= $escape($baseUrl) ?>/assignments/auto-match"
-                          class="assignment-action-form"
+                          class="assignment-action-form d-inline"
                           onsubmit="return confirm('Chạy đối sánh cho đợt này? Kết quả được lưu ở trạng thái dự thảo.');">
                         <input type="hidden" name="_csrf" value="<?= $escape($csrf_token ?? '') ?>">
                         <input type="hidden" name="period_id" value="<?= $currentPeriod ?>">
@@ -119,6 +118,27 @@ foreach ($periods as $period) {
                             <i class="ti ti-arrows-shuffle me-1"></i>Chạy đối sánh tự động
                         </button>
                     </form>
+                    <?php if (!empty($statistics['draft_count']) && (int)$statistics['draft_count'] > 0): ?>
+                    <form method="post" action="<?= $escape($baseUrl) ?>/assignments/publish"
+                          class="assignment-action-form d-inline"
+                          onsubmit="return confirm('Công bố kết quả phân công cho toàn bộ sinh viên trong đợt này?');">
+                        <input type="hidden" name="_csrf" value="<?= $escape($csrf_token ?? '') ?>">
+                        <input type="hidden" name="period_id" value="<?= $currentPeriod ?>">
+                        <button type="submit" class="btn btn-success">
+                            <i class="ti ti-speakerphone me-1"></i>Công bố kết quả
+                        </button>
+                    </form>
+                    <?php elseif (!empty($statistics['published_count']) && (int)$statistics['published_count'] > 0): ?>
+                    <form method="post" action="<?= $escape($baseUrl) ?>/assignments/unpublish"
+                          class="assignment-action-form d-inline"
+                          onsubmit="return confirm('Rút lại công bố kết quả phân công về trạng thái dự thảo?');">
+                        <input type="hidden" name="_csrf" value="<?= $escape($csrf_token ?? '') ?>">
+                        <input type="hidden" name="period_id" value="<?= $currentPeriod ?>">
+                        <button type="submit" class="btn btn-warning">
+                            <i class="ti ti-arrow-back-up me-1"></i>Rút lại công bố
+                        </button>
+                    </form>
+                    <?php endif; ?>
                 </div>
             <?php endif; ?>
         </div>
@@ -228,9 +248,11 @@ foreach ($periods as $period) {
 
             <?php require __DIR__ . '/results.php'; ?>
 
-            <div class="alert alert-info mt-4 mb-0" role="note">
-                Backend hiện chỉ hỗ trợ đối sánh tự động và lưu bản dự thảo. Chưa có route phân công thủ công,
-                xác nhận/công bố hoặc dữ liệu từng nguyện vọng NV1–NV3; các thao tác tương ứng chưa được bật.
+            <div class="alert alert-success-lt mt-4 mb-0 d-flex align-items-center gap-2" role="note">
+                <i class="ti ti-info-circle fs-3 text-success"></i>
+                <div>
+                    Hệ thống đã hỗ trợ đầy đủ quy trình: Chạy đối sánh tự động, Phân công thủ công, Điều chỉnh / Hủy phân công, và Công bố kết quả chính thức cho sinh viên và giảng viên.
+                </div>
             </div>
         <?php endif; ?>
     <?php endif; ?>
