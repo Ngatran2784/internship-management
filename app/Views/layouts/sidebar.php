@@ -45,7 +45,10 @@ $isUsersGroup = ($isUserList || $isUserCreate || $isProfile || str_starts_with($
 // Nhóm Đợt thực tập & Đồ án
 $isPeriodList   = ($currentRoute === '/periods' || $currentRoute === '/periods/detail' || $currentRoute === '/periods/edit');
 $isPeriodCreate = ($currentRoute === '/periods/create');
-$isMilestones   = str_starts_with($currentRoute, '/milestones') || ($activePage ?? '') === 'milestones';
+$isMilestones   = in_array($currentRoute, ['/milestones', '/milestones/detail', '/milestones/show', '/milestones/create', '/milestones/edit'], true);
+$isInternshipLogs = str_starts_with($currentRoute, '/internship-logs');
+$isInternshipReports = str_starts_with($currentRoute, '/internship-reports');
+$isReportReviews = str_starts_with($currentRoute, '/report-reviews');
 $isPeriodsGroup = ($isPeriodList || $isPeriodCreate || str_starts_with($currentRoute, '/periods') || $isMilestones);
 
 // Nhóm Đề tài: giữ duy nhất một mục active trên mỗi route.
@@ -76,11 +79,13 @@ if (!function_exists('renderDemoItem')) {
         ?string $link = null,
         string $linkText = ''
     ): string {
+        $tooltip = $desc !== '' ? $desc : 'Chức năng chưa được triển khai.';
+
         return '<li class="nav-item">
-            <a role="button" tabindex="0" class="nav-link text-reset" href="javascript:void(0)" style="cursor: pointer;">
+            <span class="nav-link disabled" aria-disabled="true" title="' . htmlspecialchars($tooltip, ENT_QUOTES, 'UTF-8') . '">
                 <span class="nav-link-icon"><i class="ti ' . $icon . ' fs-2"></i></span>
                 <span class="nav-link-title">' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</span>
-            </a>
+            </span>
         </li>';
     }
 }
@@ -363,7 +368,7 @@ if (!function_exists('renderDemoItem')) {
                            href="<?= $escape($baseUrl) ?>/wishes"
                            <?= $isWishes ? 'aria-current="page"' : '' ?>>
                             <span class="nav-link-icon"><i class="ti ti-list-numbers ti-list-ordered fs-2"></i></span>
-                            <span class="nav-link-title">Nguyện vọng của tôi</span>
+                            <span class="nav-link-title">Đăng ký nguyện vọng</span>
                         </a>
                     </li>
                     <li class="nav-item">
@@ -382,8 +387,18 @@ if (!function_exists('renderDemoItem')) {
                             <span class="nav-link-title">Tiến độ của tôi</span>
                         </a>
                     </li>
-                    <?= renderDemoItem('Nhật ký thực tập', 'ti-notebook', 'chua_trien_khai', '', 'Viết và cập nhật nhật ký thực tập/đồ án hằng tuần.') ?>
-                    <?= renderDemoItem('Nộp báo cáo', 'ti-upload', 'chua_trien_khai', '', 'Nộp bài báo cáo định kỳ theo các đợt nộp.') ?>
+                    <li class="nav-item">
+                        <a class="nav-link<?= $isInternshipLogs ? ' active' : '' ?>" href="<?= $escape($baseUrl) ?>/internship-logs" <?= $isInternshipLogs ? 'aria-current="page"' : '' ?>>
+                            <span class="nav-link-icon"><i class="ti ti-notebook fs-2"></i></span>
+                            <span class="nav-link-title">Nhật ký thực tập</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link<?= $isInternshipReports ? ' active' : '' ?>" href="<?= $escape($baseUrl) ?>/internship-reports" <?= $isInternshipReports ? 'aria-current="page"' : '' ?>>
+                            <span class="nav-link-icon"><i class="ti ti-upload fs-2"></i></span>
+                            <span class="nav-link-title">Báo cáo thực tập</span>
+                        </a>
+                    </li>
                     <?= renderDemoItem('Kết quả đánh giá', 'ti-award', 'chua_trien_khai', '', 'Xem kết quả điểm quá trình, điểm phản biện và hội đồng bảo vệ.') ?>
                     <?php endif; ?>
 
@@ -771,13 +786,24 @@ if (!function_exists('renderDemoItem')) {
                             <span class="nav-link-title">Tiến độ sinh viên</span>
                         </a>
                     </li>
-                    <?= renderDemoItem(
-                        'Nhật ký và báo cáo',
-                        'ti-notebook',
-                        'chua_trien_khai',
-                        '',
-                        'Xem và xác nhận nhật ký gặp mặt/hướng dẫn, đọc bài nộp báo cáo tiến độ và góp ý trực tuyến cho sinh viên.'
-                    ) ?>
+                    <li class="nav-item">
+                        <a class="nav-link<?= $isInternshipLogs ? ' active' : '' ?>" href="<?= $escape($baseUrl) ?>/internship-logs" <?= $isInternshipLogs ? 'aria-current="page"' : '' ?>>
+                            <span class="nav-link-icon"><i class="ti ti-notebook fs-2"></i></span>
+                            <span class="nav-link-title">Nhật ký sinh viên</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link<?= $isInternshipReports ? ' active' : '' ?>" href="<?= $escape($baseUrl) ?>/internship-reports" <?= $isInternshipReports ? 'aria-current="page"' : '' ?>>
+                            <span class="nav-link-icon"><i class="ti ti-file-report fs-2"></i></span>
+                            <span class="nav-link-title">Báo cáo sinh viên</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link<?= $isReportReviews ? ' active' : '' ?>" href="<?= $escape($baseUrl) ?>/report-reviews" <?= $isReportReviews ? 'aria-current="page"' : '' ?>>
+                            <span class="nav-link-icon"><i class="ti ti-message-dots fs-2"></i></span>
+                            <span class="nav-link-title">Nhận xét báo cáo</span>
+                        </a>
+                    </li>
                     <?= renderDemoItem(
                         'Chấm hướng dẫn',
                         'ti-certificate',
@@ -841,7 +867,7 @@ if (!function_exists('renderDemoItem')) {
                            href="<?= $escape($baseUrl) ?>/wishes"
                            <?= $isWishes ? 'aria-current="page"' : '' ?>>
                             <span class="nav-link-icon"><i class="ti ti-list-numbers ti-list-ordered fs-2"></i></span>
-                            <span class="nav-link-title">Nguyện vọng của tôi</span>
+                            <span class="nav-link-title">Đăng ký nguyện vọng</span>
                         </a>
                     </li>
 
@@ -871,20 +897,18 @@ if (!function_exists('renderDemoItem')) {
                             <span class="nav-link-title">Tiến độ của tôi</span>
                         </a>
                     </li>
-                    <?= renderDemoItem(
-                        'Nhật ký thực tập',
-                        'ti-notebook',
-                        'chua_trien_khai',
-                        '',
-                        'Viết nhật ký công việc hằng tuần, ghi nhận các khó khăn và nhận phản hồi xác nhận từ người hướng dẫn.'
-                    ) ?>
-                    <?= renderDemoItem(
-                        'Nộp báo cáo',
-                        'ti-upload',
-                        'chua_trien_khai',
-                        '',
-                        'Upload file báo cáo đề cương, báo cáo giữa kỳ và báo cáo tổng kết theo các đợt nộp.'
-                    ) ?>
+                    <li class="nav-item">
+                        <a class="nav-link<?= $isInternshipLogs ? ' active' : '' ?>" href="<?= $escape($baseUrl) ?>/internship-logs" <?= $isInternshipLogs ? 'aria-current="page"' : '' ?>>
+                            <span class="nav-link-icon"><i class="ti ti-notebook fs-2"></i></span>
+                            <span class="nav-link-title">Nhật ký thực tập</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link<?= $isInternshipReports ? ' active' : '' ?>" href="<?= $escape($baseUrl) ?>/internship-reports" <?= $isInternshipReports ? 'aria-current="page"' : '' ?>>
+                            <span class="nav-link-icon"><i class="ti ti-upload fs-2"></i></span>
+                            <span class="nav-link-title">Báo cáo thực tập</span>
+                        </a>
+                    </li>
                     <?= renderDemoItem(
                         'Kết quả đánh giá',
                         'ti-award',
@@ -979,20 +1003,24 @@ if (!function_exists('renderDemoItem')) {
                             <span class="nav-link-title">Tiến độ thực tập</span>
                         </a>
                     </li>
-                    <?= renderDemoItem(
-                        'Xác nhận nhật ký',
-                        'ti-check',
-                        'chua_trien_khai',
-                        '',
-                        'Xác nhận chuyên cần và ký nhận xét nhật ký làm việc hằng tuần của sinh viên tại đơn vị.'
-                    ) ?>
-                    <?= renderDemoItem(
-                        'Nhận xét báo cáo',
-                        'ti-message-dots',
-                        'chua_trien_khai',
-                        '',
-                        'Nhận xét tiến độ và góp ý trực tuyến cho các bản báo cáo thực tập của sinh viên.'
-                    ) ?>
+                    <li class="nav-item">
+                        <a class="nav-link<?= $isInternshipLogs ? ' active' : '' ?>" href="<?= $escape($baseUrl) ?>/internship-logs" <?= $isInternshipLogs ? 'aria-current="page"' : '' ?>>
+                            <span class="nav-link-icon"><i class="ti ti-check fs-2"></i></span>
+                            <span class="nav-link-title">Xác nhận nhật ký</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link<?= $isInternshipReports ? ' active' : '' ?>" href="<?= $escape($baseUrl) ?>/internship-reports" <?= $isInternshipReports ? 'aria-current="page"' : '' ?>>
+                            <span class="nav-link-icon"><i class="ti ti-file-report fs-2"></i></span>
+                            <span class="nav-link-title">Báo cáo sinh viên</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link<?= $isReportReviews ? ' active' : '' ?>" href="<?= $escape($baseUrl) ?>/report-reviews" <?= $isReportReviews ? 'aria-current="page"' : '' ?>>
+                            <span class="nav-link-icon"><i class="ti ti-message-dots fs-2"></i></span>
+                            <span class="nav-link-title">Nhận xét báo cáo</span>
+                        </a>
+                    </li>
                     <?= renderDemoItem(
                         'Đánh giá thực tập',
                         'ti-stars',

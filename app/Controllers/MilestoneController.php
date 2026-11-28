@@ -40,13 +40,14 @@ class MilestoneController extends Controller
      */
     public function index(): void
     {
-        AuthController::requireLogin();
+        AuthController::requireRole('admin', 'training_dept', 'department_head', 'faculty_staff', 'lecturer', 'student', 'enterprise');
         $userRoles = AuthController::roles();
         $userId    = (int)AuthController::id();
         $isStudent = in_array('student', $userRoles, true) && !self::canManage();
 
         $allPeriods = InternshipPeriod::all();
         $selectedPeriodId = filter_var($_GET['period_id'] ?? null, FILTER_VALIDATE_INT) ?: null;
+        $allowedPeriodIds = [];
 
         // Nếu là sinh viên, chỉ lấy đợt mà sinh viên được phân công hoặc đợt đang mở
         if ($isStudent) {
@@ -62,8 +63,42 @@ class MilestoneController extends Controller
                 }
             }
 
+            $allowedPeriodIds = array_map('intval', $studentPeriodIds);
+            if ($selectedPeriodId && !in_array($selectedPeriodId, $allowedPeriodIds, true)) {
+                $this->fail('Bạn không có quyền xem tiến độ của đợt này.', 403, '/milestones');
+                return;
+            }
+            $allPeriods = array_values(array_filter(
+                $allPeriods,
+                static fn(array $period): bool => in_array((int)$period['id'], $allowedPeriodIds, true)
+            ));
+
             if (!$selectedPeriodId && !empty($studentPeriodIds)) {
                 $selectedPeriodId = reset($studentPeriodIds);
+            }
+        } elseif (!self::canManage() && (in_array('lecturer', $userRoles, true) || in_array('enterprise', $userRoles, true))) {
+            foreach ($allPeriods as $period) {
+                $periodId = (int)$period['id'];
+                if (in_array('lecturer', $userRoles, true)
+                    && TopicAssignment::getByLecturer($userId, $periodId, true) !== []) {
+                    $allowedPeriodIds[] = $periodId;
+                }
+                if (in_array('enterprise', $userRoles, true)
+                    && TopicAssignment::getByEnterprise($userId, $periodId, true) !== []) {
+                    $allowedPeriodIds[] = $periodId;
+                }
+            }
+            $allowedPeriodIds = array_values(array_unique($allowedPeriodIds));
+            if ($selectedPeriodId && !in_array($selectedPeriodId, $allowedPeriodIds, true)) {
+                $this->fail('Bạn không có phân công trong đợt này.', 403, '/milestones');
+                return;
+            }
+            $allPeriods = array_values(array_filter(
+                $allPeriods,
+                static fn(array $period): bool => in_array((int)$period['id'], $allowedPeriodIds, true)
+            ));
+            if (!$selectedPeriodId && $allowedPeriodIds !== []) {
+                $selectedPeriodId = $allowedPeriodIds[0];
             }
         } elseif (!$selectedPeriodId && !empty($allPeriods)) {
             // Mặc định lấy đợt active đầu tiên
@@ -124,7 +159,7 @@ class MilestoneController extends Controller
      */
     public function show(): void
     {
-        AuthController::requireLogin();
+        AuthController::requireRole('admin', 'training_dept', 'department_head', 'faculty_staff', 'lecturer', 'student', 'enterprise');
         $id = filter_var($_GET['id'] ?? null, FILTER_VALIDATE_INT);
 
         if (!$id || $id <= 0) {
@@ -151,6 +186,14 @@ class MilestoneController extends Controller
                 $this->fail('Bạn không có quyền xem mốc tiến độ của đợt này.', 403, '/milestones');
                 return;
             }
+        } elseif (!self::canManage() && in_array('lecturer', $userRoles, true)
+            && TopicAssignment::getByLecturer($userId, (int)$milestone['period_id'], true) === []) {
+            $this->fail('Bạn không có phân công trong đợt của mốc này.', 403, '/milestones');
+            return;
+        } elseif (!self::canManage() && in_array('enterprise', $userRoles, true)
+            && TopicAssignment::getByEnterprise($userId, (int)$milestone['period_id'], true) === []) {
+            $this->fail('Bạn không có phân công trong đợt của mốc này.', 403, '/milestones');
+            return;
         }
 
         $data = [
@@ -187,7 +230,7 @@ class MilestoneController extends Controller
             'selectedPeriodId' => $selectedPeriodId,
             'statusLabels'     => Milestone::STATUS_LABELS,
             'error'            => AuthController::pullFlash('error'),
-            'oldInput'         => AuthController::pullFlash('old_input') ?? [],
+            'oldInput'         => AuthController::pullFlashData('old_input') ?? [],
             'csrfToken'        => AuthController::csrfToken(),
         ]);
     }
@@ -227,11 +270,11 @@ class MilestoneController extends Controller
 
             AuthController::go("/milestones?period_id={$data['period_id']}");
         } catch (InvalidArgumentException $e) {
-            AuthController::setFlash('old_input', $_POST);
+            AuthController::setFlashData('old_input', $_POST);
             $this->fail($e->getMessage(), 422, '/milestones/create' . ($data['period_id'] ? "?period_id={$data['period_id']}" : ''));
         } catch (Throwable $e) {
             error_log('MilestoneController store error: ' . $e->getMessage());
-            AuthController::setFlash('old_input', $_POST);
+            AuthController::setFlashData('old_input', $_POST);
             $this->fail('Lỗi hệ thống khi lưu mốc tiến độ. Vui lòng thử lại sau.', 500, '/milestones/create');
         }
     }
@@ -262,7 +305,7 @@ class MilestoneController extends Controller
             'allPeriods'   => $allPeriods,
             'statusLabels' => Milestone::STATUS_LABELS,
             'error'        => AuthController::pullFlash('error'),
-            'oldInput'     => AuthController::pullFlash('old_input') ?? [],
+            'oldInput'     => AuthController::pullFlashData('old_input') ?? [],
             'csrfToken'    => AuthController::csrfToken(),
         ]);
     }
@@ -307,9 +350,11 @@ class MilestoneController extends Controller
 
             AuthController::go("/milestones?period_id={$data['period_id']}");
         } catch (InvalidArgumentException $e) {
+            AuthController::setFlashData('old_input', $_POST);
             $this->fail($e->getMessage(), 422, "/milestones/edit?id={$id}");
         } catch (Throwable $e) {
             error_log('MilestoneController update error: ' . $e->getMessage());
+            AuthController::setFlashData('old_input', $_POST);
             $this->fail('Lỗi hệ thống khi cập nhật mốc tiến độ.', 500, "/milestones/edit?id={$id}");
         }
     }
@@ -372,12 +417,67 @@ class MilestoneController extends Controller
             return;
         }
 
-        $studentId = filter_var($_GET['student_id'] ?? null, FILTER_VALIDATE_INT);
-        $userRoles = AuthController::roles();
+        $period = InternshipPeriod::findById((int)$periodId);
+        if (!$period) {
+            $this->sendJson(['ok' => false, 'error' => 'Đợt thực tập không tồn tại.'], 404);
+            return;
+        }
 
-        // Nếu là sinh viên, chỉ cho phép tra cứu tiến độ của chính mình
-        if (in_array('student', $userRoles, true) && !self::canManage()) {
-            $studentId = (int)AuthController::id();
+        $studentValue = $_GET['student_id'] ?? null;
+        $studentId = null;
+        if ($studentValue !== null && $studentValue !== '') {
+            $studentId = filter_var($studentValue, FILTER_VALIDATE_INT);
+            if (!$studentId || $studentId < 1) {
+                $this->sendJson(['ok' => false, 'error' => 'student_id không hợp lệ.'], 400);
+                return;
+            }
+        }
+
+        $userRoles = AuthController::roles();
+        $userId = (int)AuthController::id();
+        $canViewAll = self::canManage() || in_array('faculty_staff', $userRoles, true);
+
+        if (!$canViewAll && in_array('student', $userRoles, true)) {
+            $studentId = $userId;
+            $assignment = TopicAssignment::getByStudent($userId, (int)$periodId, false);
+            if (!$assignment && ($period['status'] ?? '') !== InternshipPeriod::STATUS_ACTIVE) {
+                $this->sendJson(['ok' => false, 'error' => 'Bạn không có quyền xem tiến độ của đợt này.'], 403);
+                return;
+            }
+        } elseif (!$canViewAll && in_array('lecturer', $userRoles, true)) {
+            if (TopicAssignment::getByLecturer($userId, (int)$periodId, true) === []) {
+                $this->sendJson(['ok' => false, 'error' => 'Bạn không có phân công trong đợt này.'], 403);
+                return;
+            }
+            if ($studentId !== null) {
+                $assignment = TopicAssignment::getByStudent((int)$studentId, (int)$periodId, true);
+                if (!$assignment || (int)$assignment['lecturer_id'] !== $userId) {
+                    $this->sendJson(['ok' => false, 'error' => 'Sinh viên không thuộc phạm vi hướng dẫn của bạn.'], 403);
+                    return;
+                }
+            }
+        } elseif (!$canViewAll && in_array('enterprise', $userRoles, true)) {
+            $assignments = TopicAssignment::getByEnterprise($userId, (int)$periodId, true);
+            if ($assignments === []) {
+                $this->sendJson(['ok' => false, 'error' => 'Bạn không có phân công trong đợt này.'], 403);
+                return;
+            }
+            if ($studentId !== null) {
+                $studentIsAssigned = false;
+                foreach ($assignments as $assignment) {
+                    if ((int)$assignment['student_id'] === (int)$studentId) {
+                        $studentIsAssigned = true;
+                        break;
+                    }
+                }
+                if (!$studentIsAssigned) {
+                    $this->sendJson(['ok' => false, 'error' => 'Sinh viên không thuộc phạm vi doanh nghiệp của bạn.'], 403);
+                    return;
+                }
+            }
+        } elseif (!$canViewAll) {
+            $this->sendJson(['ok' => false, 'error' => 'Bạn không có quyền xem tiến độ.'], 403);
+            return;
         }
 
         $stats = Milestone::getProgressStats($periodId, $studentId);

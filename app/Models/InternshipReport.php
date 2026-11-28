@@ -71,7 +71,8 @@ class InternshipReport
                    p.code AS period_code,
                    p.name AS period_name,
                    t.name AS topic_name,
-                   a.lecturer_id
+                   a.lecturer_id,
+                   t.proposer_id AS enterprise_id
             FROM `internship_reports` r
             INNER JOIN `milestones` m ON r.milestone_id = m.id
             INNER JOIN `users` u_s ON r.student_id = u_s.id
@@ -117,6 +118,108 @@ class InternshipReport
         return $row ? self::findById((int)$row['id']) : null;
     }
 
+    public static function getByStudent(int $studentId): array
+    {
+        $pdo = Database::getConnection();
+        $stmt = $pdo->prepare("
+            SELECT r.id,
+                   r.title,
+                   r.current_version,
+                   r.status,
+                   r.grade,
+                   r.submitted_at,
+                   m.title AS milestone_title,
+                   m.due_date AS milestone_due_date,
+                   p.name AS period_name
+            FROM `internship_reports` r
+            INNER JOIN `milestones` m ON r.milestone_id = m.id
+            INNER JOIN `internship_periods` p ON r.period_id = p.id
+            WHERE r.student_id = :student_id
+            ORDER BY r.submitted_at DESC, r.id DESC
+        ");
+        $stmt->execute([':student_id' => $studentId]);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Lấy báo cáo trong phạm vi giảng viên hướng dẫn hoặc doanh nghiệp
+     */
+    public static function getByReviewer(int $reviewerId, string $role): array
+    {
+        if (!in_array($role, ['lecturer', 'enterprise'], true)) {
+            throw new InvalidArgumentException('Vai trò người nhận xét không hợp lệ.');
+        }
+
+        $ownerCondition = $role === 'lecturer'
+            ? 'a.lecturer_id = :reviewer_id'
+            : 't.proposer_id = :reviewer_id';
+
+        $pdo = Database::getConnection();
+        $stmt = $pdo->prepare("
+            SELECT r.id,
+                   r.title,
+                   r.current_version,
+                   r.status,
+                   r.grade,
+                   r.submitted_at,
+                   r.student_id,
+                   r.assignment_id,
+                   r.milestone_id,
+                   r.period_id,
+                   m.title AS milestone_title,
+                   m.due_date AS milestone_due_date,
+                   p.name AS period_name,
+                   u.full_name AS student_name,
+                   u.username AS student_code,
+                   t.name AS topic_name,
+                   a.lecturer_id,
+                   t.proposer_id AS enterprise_id,
+                   sub.id AS latest_submission_id,
+                   sub.file_name AS latest_file_name,
+                   sub.submitted_at AS latest_submission_at
+            FROM `internship_reports` r
+            INNER JOIN `milestones` m ON r.milestone_id = m.id
+            INNER JOIN `internship_periods` p ON r.period_id = p.id
+            INNER JOIN `topic_assignments` a ON r.assignment_id = a.id
+            INNER JOIN `topics` t ON a.topic_id = t.id
+            INNER JOIN `users` u ON r.student_id = u.id
+            LEFT JOIN `report_submissions` sub
+                ON sub.report_id = r.id AND sub.version = r.current_version
+            WHERE {$ownerCondition}
+              AND a.status <> 'cancelled'
+            ORDER BY r.submitted_at DESC, r.id DESC
+        ");
+        $stmt->execute([':reviewer_id' => $reviewerId]);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public static function findSubmissionById(int $submissionId): ?array
+    {
+        $pdo = Database::getConnection();
+        $stmt = $pdo->prepare("
+            SELECT sub.*,
+                   r.student_id,
+                   r.assignment_id,
+                   r.milestone_id,
+                   r.period_id,
+                   r.title AS report_title,
+                   a.lecturer_id,
+                   t.proposer_id AS enterprise_id
+            FROM `report_submissions` sub
+            INNER JOIN `internship_reports` r ON sub.report_id = r.id
+            INNER JOIN `topic_assignments` a ON r.assignment_id = a.id
+            INNER JOIN `topics` t ON a.topic_id = t.id
+            WHERE sub.id = :submission_id
+            LIMIT 1
+        ");
+        $stmt->execute([':submission_id' => $submissionId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $row ?: null;
+    }
+
     /**
      * Lấy toàn bộ lịch sử các lần nộp (submissions) của báo cáo
      */
@@ -124,13 +227,8 @@ class InternshipReport
     {
         $pdo = Database::getConnection();
         $stmt = $pdo->prepare("
-            SELECT sub.*,
-                   rev.decision AS review_decision,
-                   rev.comments AS review_comments,
-                   rev.score AS review_score,
-                   rev.reviewed_at
+            SELECT sub.*
             FROM `report_submissions` sub
-            LEFT JOIN `report_reviews` rev ON rev.submission_id = sub.id
             WHERE sub.report_id = :report_id
             ORDER BY sub.version DESC
         ");
