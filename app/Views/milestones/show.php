@@ -15,10 +15,19 @@ $milestone = is_array($milestone ?? null) ? $milestone : [];
 $canManage = (bool)($canManage ?? false);
 $isStudent = (bool)($isStudent ?? false);
 $mId = (int)($milestone['id'] ?? 0);
-$mStatus = $milestone['status'] ?? 'pending';
-$statusBadge = $statusBadges[$mStatus] ?? 'bg-secondary-lt text-secondary';
+$mStatus = (string)($milestone['status'] ?? 'pending');
+$milestoneStatusBadges = [
+    'pending' => 'bg-secondary-lt text-secondary',
+    'active' => 'bg-primary-lt text-primary',
+    'completed' => 'bg-success-lt text-success',
+    'overdue' => 'bg-danger-lt text-danger',
+    'cancelled' => 'bg-dark-lt text-dark',
+];
+$statusBadge = $milestoneStatusBadges[$mStatus] ?? 'bg-secondary-lt text-secondary';
 $statusText  = $statusLabels[$mStatus] ?? $mStatus;
-$isOverdue   = strtotime($milestone['due_date'] ?? 'now') < time() && $mStatus !== 'completed';
+$dueTimestamp = !empty($milestone['due_date']) ? strtotime((string)$milestone['due_date']) : false;
+$isOverdue = $dueTimestamp !== false && $dueTimestamp < time() && !in_array($mStatus, ['completed', 'cancelled'], true);
+$progressPeriodId = (int)($milestone['period_id'] ?? 0);
 ?>
 
 <div class="container-xl my-4">
@@ -122,6 +131,21 @@ $isOverdue   = strtotime($milestone['due_date'] ?? 'now') < time() && $mStatus !
         </div>
 
         <div class="col-lg-4">
+            <section class="card border-0 shadow-sm mb-4"
+                     aria-labelledby="milestone-progress-title"
+                     data-progress-url="<?= $escape($baseUrl) ?>/api/milestones/progress?period_id=<?= $progressPeriodId ?>"
+                     data-milestone-id="<?= $mId ?>"
+                     data-is-student="<?= $isStudent ? '1' : '0' ?>">
+                <div class="card-header bg-primary-lt py-3">
+                    <h3 id="milestone-progress-title" class="card-title text-primary m-0">
+                        <i class="ti ti-chart-line me-2"></i>Tiến độ<?= $isStudent ? ' của bạn' : ' đợt thực tập' ?>
+                    </h3>
+                </div>
+                <div class="card-body" id="milestone-progress-content" aria-live="polite">
+                    <div class="text-secondary"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Đang tải tiến độ...</div>
+                </div>
+            </section>
+
             <!-- Thẻ trợ giúp / Thông tin nhanh -->
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-header bg-primary-lt py-3">
@@ -144,5 +168,58 @@ $isOverdue   = strtotime($milestone['due_date'] ?? 'now') < time() && $mStatus !
         </div>
     </div>
 </div>
+
+<script>
+(() => {
+    const progressCard = document.querySelector('[data-progress-url]');
+    const progressContent = document.getElementById('milestone-progress-content');
+    if (!progressCard || !progressContent) return;
+
+    const statusLabels = {
+        pending: 'Chưa bắt đầu',
+        in_progress: 'Đang thực hiện',
+        overdue: 'Quá hạn, chưa nộp',
+        submitted: 'Đã nộp, chờ phản hồi',
+        completed: 'Đã được duyệt'
+    };
+
+    fetch(progressCard.dataset.progressUrl, { headers: { Accept: 'application/json' } })
+        .then(response => {
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            return response.json();
+        })
+        .then(payload => {
+            if (!payload.ok || !payload.statistics || !Array.isArray(payload.milestones)) {
+                throw new Error('Phản hồi tiến độ không hợp lệ.');
+            }
+
+            const stats = payload.statistics;
+            const isStudent = progressCard.dataset.isStudent === '1';
+            const completed = Number(isStudent ? stats.student_completed : stats.completed_milestones) || 0;
+            const total = Number(isStudent ? stats.student_total : stats.total_milestones) || 0;
+            const overdue = Number(isStudent ? stats.student_overdue : stats.overdue_milestones) || 0;
+            const rate = Number(isStudent ? stats.student_rate : stats.completion_rate) || 0;
+            const currentMilestone = payload.milestones.find(item =>
+                Number(item.id) === Number(progressCard.dataset.milestoneId)
+            );
+            const details = [
+                `<div class="d-flex justify-content-between mb-2"><span>Hoàn thành</span><strong>${completed}/${total}</strong></div>`,
+                `<div class="progress progress-sm mb-2" role="progressbar" aria-label="Tỷ lệ hoàn thành" aria-valuenow="${rate}" aria-valuemin="0" aria-valuemax="100"><div class="progress-bar bg-primary" style="width: ${Math.max(0, Math.min(rate, 100))}%"></div></div>`,
+                `<div class="d-flex justify-content-between small text-secondary"><span>${rate}% hoàn thành</span><span>${overdue} mốc quá hạn</span></div>`
+            ];
+            if (isStudent && currentMilestone) {
+                const state = statusLabels[currentMilestone.student_progress_state] || 'Chưa có trạng thái';
+                details.push(`<div class="mt-3 pt-3 border-top"><span class="text-secondary">Mốc này:</span> <strong>${state}</strong></div>`);
+            } else if (!isStudent && currentMilestone && currentMilestone.total_reports !== undefined) {
+                details.push(`<div class="mt-3 pt-3 border-top"><span class="text-secondary">Báo cáo:</span> <strong>${Number(currentMilestone.approved_reports) || 0}/${Number(currentMilestone.total_reports) || 0} đã duyệt</strong></div>`);
+            }
+            progressContent.innerHTML = details.join('');
+        })
+        .catch(() => {
+            progressContent.textContent = 'Không thể tải tiến độ lúc này. Vui lòng tải lại trang để thử lại.';
+            progressContent.classList.add('text-danger');
+        });
+})();
+</script>
 
 <?php require dirname(__DIR__) . '/layouts/footer.php'; ?>

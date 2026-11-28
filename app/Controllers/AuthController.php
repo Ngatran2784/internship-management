@@ -325,8 +325,23 @@ class AuthController extends Controller
         $_SESSION['flash'][$key] = $value;
     }
 
+    public static function setFlashData(string $key, mixed $value): void
+    {
+        self::startSession();
+        $_SESSION['flash'][$key] = $value;
+    }
+
     /** Lấy thông báo flash rồi xóa luôn (chỉ hiển thị 1 lần) */
     public static function pullFlash(string $key): ?string
+    {
+        self::startSession();
+        $value = $_SESSION['flash'][$key] ?? null;
+        unset($_SESSION['flash'][$key]);
+
+        return $value;
+    }
+
+    public static function pullFlashData(string $key): mixed
     {
         self::startSession();
         $value = $_SESSION['flash'][$key] ?? null;

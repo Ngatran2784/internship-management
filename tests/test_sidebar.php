@@ -134,6 +134,19 @@ foreach ([
     t("Route {$request}: Active đúng mục đề tài", str_contains($sbTopic, 'href="/CNPM/internship-management/public' . $activeHref . '"') && str_contains($sbTopic, 'aria-current="page"'));
 }
 
+foreach (['/milestones', '/milestones/detail?id=5', '/milestones/show?id=5', '/milestones/create', '/milestones/edit?id=5'] as $request) {
+    $sbMilestones = renderSidebarForTest($adminRoles, '/CNPM/internship-management/public' . $request, 'milestones');
+    preg_match_all('/class="[^"]*nav-link[^"]*\\bactive\\b[^"]*"/', $sbMilestones, $milestoneActiveLinks);
+    t("Route {$request}: Active đúng mục Mốc tiến độ",
+        count($milestoneActiveLinks[0]) === 1
+        && str_contains($sbMilestones, 'href="/CNPM/internship-management/public/milestones"')
+        && str_contains($sbMilestones, 'aria-current="page"')
+    );
+}
+$sbMilestoneApi = renderSidebarForTest($adminRoles, '/CNPM/internship-management/public/api/milestones/progress');
+preg_match_all('/class="[^"]*nav-link[^"]*\\bactive\\b[^"]*"/', $sbMilestoneApi, $milestoneApiActiveLinks);
+t("Route API tiến độ không active menu giao diện", count($milestoneApiActiveLinks[0]) === 0);
+
 // ── 4. Kiểm tra các nhóm menu hệ thống trong Admin theo chức năng hoạt động ──
 t("Nhóm 1: Bảng điều khiển tồn tại", str_contains($sbDash, 'Bảng điều khiển'));
 t("Nhóm 2: Quản lý người dùng tồn tại", str_contains($sbDash, 'Quản lý người dùng'));
@@ -170,6 +183,8 @@ t("Admin: Không có liên kết giả (href='#', route ảo)", !preg_match('/hr
 $sbStudent = renderSidebarForTest(['student'], '/CNPM/internship-management/public/dashboard', 'dashboard');
 t("Sinh viên: Không thấy menu Quản lý người dùng", !str_contains($sbStudent, 'Quản lý người dùng'));
 t("Sinh viên: Không thấy menu Tạo đợt mới", !str_contains($sbStudent, 'Tạo đợt mới'));
+t("Sinh viên: Không thấy mục nhận xét báo cáo dành cho người hướng dẫn", !str_contains($sbStudent, '/report-reviews'));
+t("Quản trị viên thuần: Không thấy mục nhật ký/báo cáo dành riêng cho sinh viên", !str_contains($sbDash, 'href="/CNPM/internship-management/public/internship-logs"'));
 t("Sinh viên: Có mục Bảng điều khiển active", str_contains($sbStudent, 'Bảng điều khiển'));
 t("Sinh viên: Có danh sách đề tài đã được duyệt", str_contains($sbStudent, 'Danh sách đề tài') && str_contains($sbStudent, 'href="/CNPM/internship-management/public/topics"'));
 t("Sinh viên: Không còn nhãn 'Sắp có'", !str_contains($sbStudent, 'Sắp có'));
@@ -181,6 +196,7 @@ $sbLecturer = renderSidebarForTest(['lecturer'], '/CNPM/internship-management/pu
 t("Giảng viên: Active đúng mục Hồ sơ cá nhân", str_contains($sbLecturer, 'Hồ sơ cá nhân') && str_contains($sbLecturer, 'aria-current="page"'));
 t("Giảng viên: Không còn nhãn 'Sắp có'", !str_contains($sbLecturer, 'Sắp có'));
 t("Giảng viên: Có mục Đề tài đã đề xuất", str_contains($sbLecturer, 'Đề tài đã đề xuất'));
+t("Giảng viên: Có liên kết nhật ký và nhận xét", str_contains($sbLecturer, 'href="/CNPM/internship-management/public/internship-logs"') && str_contains($sbLecturer, 'href="/CNPM/internship-management/public/report-reviews"'));
 t("Giảng viên: KHÔNG hiển thị chức năng Phân công đề tài và giảng viên của Cán bộ khoa", !str_contains($sbLecturer, 'Phân công đề tài và giảng viên'));
 t("Giảng viên: KHÔNG hiển thị Đề tài chờ duyệt", !str_contains($sbLecturer, 'Đề tài chờ duyệt'));
 
@@ -261,6 +277,23 @@ t("RBAC: Phòng đào tạo thuần không thấy Đăng ký nguyện vọng", !
 // Người dùng kiêm vai trò Admin + Student
 $sbAdminStudent = renderSidebarForTest(['admin', 'student'], '/CNPM/internship-management/public/dashboard', 'dashboard');
 t("RBAC: Tài khoản kiêm Admin + Student thấy Đăng ký nguyện vọng", str_contains($sbAdminStudent, 'Đăng ký nguyện vọng'));
+
+// ── 8. Kiểm tra liên kết Sprint 5 và trạng thái active theo vai trò ─────────
+$sprint5NavCases = [
+    [['student'], '/internship-logs/detail?id=1', '/internship-logs', 'Sinh viên: Nhật ký active đúng route'],
+    [['student'], '/internship-reports/detail?id=1', '/internship-reports', 'Sinh viên: Báo cáo active đúng route'],
+    [['lecturer'], '/internship-logs', '/internship-logs', 'Giảng viên: Nhật ký active đúng route'],
+    [['lecturer'], '/report-reviews/create?report_id=1', '/report-reviews', 'Giảng viên: Nhận xét active đúng route'],
+    [['enterprise'], '/internship-logs', '/internship-logs', 'Doanh nghiệp: Nhật ký active đúng route'],
+    [['enterprise'], '/report-reviews', '/report-reviews', 'Doanh nghiệp: Nhận xét active đúng route'],
+];
+foreach ($sprint5NavCases as [$roles, $path, $href, $description]) {
+    $html = renderSidebarForTest($roles, '/CNPM/internship-management/public' . $path);
+    preg_match_all('/class="[^"]*nav-link[^"]*\\bactive\\b[^"]*"/', $html, $activeLinks);
+    t($description, count($activeLinks[0]) === 1
+        && str_contains($html, 'href="/CNPM/internship-management/public' . $href . '"')
+        && str_contains($html, 'aria-current="page"'));
+}
 
 // ── 8. Kiểm tra chống trùng lặp menu 'Đề tài đã đề xuất' & Vai trò Doanh nghiệp ──
 $countAdminPureMy = substr_count($sbDash, 'Đề tài đã đề xuất');

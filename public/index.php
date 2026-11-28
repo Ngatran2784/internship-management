@@ -1,6 +1,26 @@
 <?php
 declare(strict_types=1);
 
+if (PHP_SAPI === 'cli-server') {
+    $requestPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+    if (is_string($requestPath) && !preg_match('~(?:^|/)\.~', $requestPath)) {
+        $publicRoot = realpath(__DIR__);
+        $requestedFile = realpath(
+            __DIR__ . DIRECTORY_SEPARATOR . ltrim(rawurldecode($requestPath), '/\\')
+        );
+
+        if (
+            $publicRoot !== false
+            && $requestedFile !== false
+            && str_starts_with($requestedFile, $publicRoot . DIRECTORY_SEPARATOR)
+            && is_file($requestedFile)
+            && strtolower(pathinfo($requestedFile, PATHINFO_EXTENSION)) !== 'php'
+        ) {
+            return false;
+        }
+    }
+}
+
 // Thiết lập múi giờ và hiển thị lỗi môi trường phát triển
 date_default_timezone_set('Asia/Ho_Chi_Minh');
 ini_set('display_errors', '1');
@@ -35,6 +55,9 @@ use App\Controllers\TopicApprovalController;
 use App\Controllers\TopicWishController;
 use App\Controllers\TopicAssignmentController;
 use App\Controllers\MilestoneController;
+use App\Controllers\InternshipLogController;
+use App\Controllers\InternshipReportController;
+use App\Controllers\ReportReviewController;
 
 // 2. KHỞI TẠO ROUTER
 $router = new Router();
@@ -148,6 +171,27 @@ $router->post('/milestones/edit',               [MilestoneController::class, 'up
 $router->post('/milestones/update',             [MilestoneController::class, 'update']);
 $router->post('/milestones/delete',             [MilestoneController::class, 'delete']);
 $router->get('/api/milestones/progress',        [MilestoneController::class, 'progressApi']);
+
+// --- Nhật ký thực tập, báo cáo và nhận xét ---
+$router->get('/internship-logs',                 [InternshipLogController::class, 'index']);
+$router->get('/internship-logs/create',          [InternshipLogController::class, 'create']);
+$router->post('/internship-logs/store',          [InternshipLogController::class, 'store']);
+$router->get('/internship-logs/detail',          [InternshipLogController::class, 'show']);
+$router->get('/internship-logs/edit',            [InternshipLogController::class, 'edit']);
+$router->post('/internship-logs/update',         [InternshipLogController::class, 'update']);
+$router->post('/internship-logs/delete',         [InternshipLogController::class, 'delete']);
+$router->post('/internship-logs/confirm',        [InternshipLogController::class, 'confirm']);
+$router->post('/internship-logs/reject',         [InternshipLogController::class, 'reject']);
+
+$router->get('/internship-reports',              [InternshipReportController::class, 'index']);
+$router->get('/internship-reports/create',       [InternshipReportController::class, 'create']);
+$router->post('/internship-reports/submit',      [InternshipReportController::class, 'submit']);
+$router->get('/internship-reports/detail',       [InternshipReportController::class, 'show']);
+$router->get('/internship-reports/download',     [InternshipReportController::class, 'download']);
+
+$router->get('/report-reviews',                  [ReportReviewController::class, 'index']);
+$router->get('/report-reviews/create',           [ReportReviewController::class, 'create']);
+$router->post('/report-reviews/store',           [ReportReviewController::class, 'store']);
 
 // Hỗ trợ alias trực tiếp /topics/{id} sang xem chi tiết đề tài
 if (preg_match('#/topics/(\d+)$#', $reqPath, $topicMatches)) {

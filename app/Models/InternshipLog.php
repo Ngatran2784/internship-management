@@ -54,7 +54,9 @@ class InternshipLog
                    u_s.username AS student_code,
                    u_c.full_name AS confirmer_name,
                    p.name AS period_name,
-                   t.name AS topic_name
+                   t.name AS topic_name,
+                   a.lecturer_id,
+                   t.proposer_id AS enterprise_id
             FROM `internship_logs` l
             INNER JOIN `users` u_s ON l.student_id = u_s.id
             LEFT JOIN `users` u_c ON l.confirmed_by = u_c.id
@@ -101,6 +103,48 @@ class InternshipLog
     }
 
     /**
+     * Lấy nhật ký thuộc các đề tài do một doanh nghiệp đề xuất
+     */
+    public static function getByEnterprise(int $enterpriseId, ?int $periodId = null, ?string $status = null): array
+    {
+        $pdo = Database::getConnection();
+        $sql = "
+            SELECT l.*,
+                   u_s.full_name AS student_name,
+                   u_s.username AS student_code,
+                   u_c.full_name AS confirmer_name,
+                   p.name AS period_name,
+                   t.name AS topic_name,
+                   a.lecturer_id,
+                   t.proposer_id AS enterprise_id
+            FROM `internship_logs` l
+            INNER JOIN `topic_assignments` a ON l.assignment_id = a.id
+            INNER JOIN `topics` t ON a.topic_id = t.id
+            INNER JOIN `users` u_s ON l.student_id = u_s.id
+            LEFT JOIN `users` u_c ON l.confirmed_by = u_c.id
+            INNER JOIN `internship_periods` p ON l.period_id = p.id
+            WHERE t.proposer_id = :enterprise_id
+              AND a.status <> 'cancelled'
+        ";
+        $params = [':enterprise_id' => $enterpriseId];
+
+        if ($periodId !== null) {
+            $sql .= " AND l.period_id = :period_id";
+            $params[':period_id'] = $periodId;
+        }
+        if ($status !== null) {
+            $sql .= " AND l.status = :status";
+            $params[':status'] = $status;
+        }
+
+        $sql .= " ORDER BY l.week_number DESC, l.created_at DESC";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
      * Lấy danh sách nhật ký theo phân công
      */
     public static function getByAssignment(int $assignmentId): array
@@ -135,6 +179,7 @@ class InternshipLog
             INNER JOIN `topics` t ON a.topic_id = t.id
             WHERE a.lecturer_id = :lecturer_id
               AND a.period_id = :period_id
+              AND a.status <> 'cancelled'
         ";
 
         $params = [

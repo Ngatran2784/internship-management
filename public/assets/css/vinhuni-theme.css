@@ -218,6 +218,14 @@ a:hover {
   padding-left: 0.5rem;
 }
 
+.milestone-table {
+  min-width: 58rem;
+}
+
+.milestone-table .milestone-actions {
+  white-space: nowrap;
+}
+
 .app-sidebar .sidebar-submenu .nav-link {
   font-size: 0.84rem;
   padding: 0.45rem 0.75rem 0.45rem 1rem;
